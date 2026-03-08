@@ -80,6 +80,26 @@ The **Risk** column is independently colored to highlight dangerous-but-entangle
 | **Medium** | >= 0.2 | Plan for next sprint | Moderate risk |
 | **Low** | < 0.2 | Backlog or too entangled | Low churn, well-tested, or simple |
 
+### Method-level drill-down
+
+Use `--detailed` to expand the top 5 files with per-method coverage and complexity:
+
+```
+dotnet-litmus scan --detailed
+```
+
+```
+Rank  File                       Commits  Coverage  Complexity  Dependency  Risk  Priority  Level
+1     Services/OrderService.cs   47       12%       94          Low         1.42  1.42      High
+        ProcessOrder             —        50%       25
+        ValidateInput            —        0%        18
+2     Services/ReportFormatter.cs 22      31%       67          Low         0.71  0.71      High
+        FormatReport             —        10%       30
+        BuildHeader              —        80%       8
+```
+
+Method rows show coverage and complexity only — churn is a file-level signal (shown as `—`), and no method-level priority is computed since only 2 of 4 signals are available. Methods are sorted by complexity descending.
+
 ## Commands
 
 Litmus has two commands: `scan` runs tests and analyzes in one step; `analyze` skips testing and uses an existing coverage file.
@@ -139,6 +159,7 @@ Use `analyze` when you already have a Cobertura XML coverage report (e.g., from 
 | `--verbose` | false | Show detailed intermediate scores |
 | `--quiet` | false | Suppress all output except errors |
 | `--fail-on-threshold` | -- | Exit with code 1 if any file's Risk Score or Starting Priority exceeds this value (0.0-2.0) |
+| `--detailed` | false | Expand top-ranked files with per-method coverage and complexity |
 | `--no-color` | false | Disable colored output |
 
 ### `scan`-only options
@@ -202,6 +223,14 @@ dotnet-litmus analyze \
   --exclude "**/ViewModels/*.cs" \
   --output report.json
 ```
+
+### Drill down into top files
+
+```bash
+dotnet-litmus scan --detailed --top 10
+```
+
+Shows method-level coverage and complexity for the top 5 files (out of the 10 displayed). Useful for identifying which specific methods inside a high-risk file need attention first.
 
 ### Legacy codebase with no tests
 

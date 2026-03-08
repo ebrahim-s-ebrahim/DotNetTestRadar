@@ -279,4 +279,87 @@ public class CoverageParserTests
         merged.FileCoverage["Models/Order.cs"].Should().Be(1.0);
         merged.FileCoverage["Controllers/OrderController.cs"].Should().Be(0.55);
     }
+
+    [Fact]
+    public void Parse_CoberturaWithMethods_ExtractsMethodCoverage()
+    {
+        _fileSystem.ReadAllText("coverage.xml").Returns(TestFixtures.CoberturaWithMethodElements);
+
+        var result = _sut.Parse("coverage.xml");
+
+        result.MethodCoverage.Should().ContainKey("MyApp/Services/OrderService.cs");
+        var methods = result.MethodCoverage["MyApp/Services/OrderService.cs"];
+
+        methods.Should().Contain(m => m.Name == "ProcessOrder");
+        methods.Should().Contain(m => m.Name == "ValidateInput");
+
+        // Compiler-generated <ProcessOrder>b__0 and .ctor should be excluded
+        methods.Should().NotContain(m => m.Name.Contains("<"));
+        methods.Should().NotContain(m => m.Name.StartsWith("."));
+
+        var processOrder = methods.First(m => m.Name == "ProcessOrder");
+        processOrder.CoverageRate.Should().Be(0.5); // 2 of 4 lines hit
+
+        var validateInput = methods.First(m => m.Name == "ValidateInput");
+        validateInput.CoverageRate.Should().Be(0.0); // 0 of 3 lines hit
+    }
+
+    [Fact]
+    public void Parse_CoberturaWithoutMethods_MethodCoverageEmpty()
+    {
+        _fileSystem.ReadAllText("coverage.xml").Returns(TestFixtures.ValidCoberturaXml);
+
+        var result = _sut.Parse("coverage.xml");
+
+        result.MethodCoverage.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void GetMethodCoverageForFile_SuffixMatching_Works()
+    {
+        var coverage = new CoverageResult
+        {
+            MethodCoverage =
+            {
+                ["MyApp/Services/OrderService.cs"] = [("ProcessOrder", 0.5)]
+            }
+        };
+
+        var methods = CoverageParser.GetMethodCoverageForFile(coverage, "Services/OrderService.cs");
+
+        methods.Should().ContainSingle().Which.Name.Should().Be("ProcessOrder");
+    }
+
+    [Fact]
+    public void GetMethodCoverageForFile_NoMatch_ReturnsEmpty()
+    {
+        var coverage = new CoverageResult();
+
+        var methods = CoverageParser.GetMethodCoverageForFile(coverage, "NoSuchFile.cs");
+
+        methods.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Merge_MethodCoverage_KeepsLargerSet()
+    {
+        var proj1 = new CoverageResult
+        {
+            MethodCoverage =
+            {
+                ["Service.cs"] = [("MethodA", 0.5)]
+            }
+        };
+        var proj2 = new CoverageResult
+        {
+            MethodCoverage =
+            {
+                ["Service.cs"] = [("MethodA", 0.8), ("MethodB", 1.0)]
+            }
+        };
+
+        var merged = CoverageParser.Merge([proj1, proj2]);
+
+        merged.MethodCoverage["Service.cs"].Should().HaveCount(2);
+    }
 }

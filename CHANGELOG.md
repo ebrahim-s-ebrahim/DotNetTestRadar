@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `--detailed` option for `scan` and `analyze` commands: expand top-ranked files with per-method coverage and complexity via Roslyn and Cobertura XML method-level parsing
 - `--no-coverage` option for `scan` command: skip test execution and coverage collection to rank files by churn, complexity, and testability only — for codebases with zero tests
 - `--coverage-tool` option for `scan` command: choose between `coverlet` (default) and `dotnet-coverage` as the coverage collector
 - `--timeout` option for `scan` command: configurable time limit (default: 10 minutes) that kills the process tree if exceeded

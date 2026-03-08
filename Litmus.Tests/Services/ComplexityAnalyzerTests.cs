@@ -170,4 +170,100 @@ public class ComplexityAnalyzerTests
 
         callCount.Should().Be(2);
     }
+
+    [Fact]
+    public void CalculateMethodComplexities_SimpleClass_ReturnsMethodNameAndComplexity()
+    {
+        var result = ComplexityAnalyzer.CalculateMethodComplexities(TestFixtures.SimpleComplexityCode);
+
+        result.Should().ContainSingle()
+            .Which.Should().Be(("Calculate", 3));
+    }
+
+    [Fact]
+    public void CalculateMethodComplexities_ComplexClass_ReturnsMultipleMethods()
+    {
+        var result = ComplexityAnalyzer.CalculateMethodComplexities(TestFixtures.ComplexCode);
+
+        result.Should().HaveCount(2);
+        result.Should().Contain(m => m.Name == "Method1");
+        result.Should().Contain(m => m.Name == "Method2");
+
+        var method1 = result.First(m => m.Name == "Method1");
+        var method2 = result.First(m => m.Name == "Method2");
+        method1.Complexity.Should().BeGreaterThan(1);
+        method2.Complexity.Should().BeGreaterThan(method1.Complexity);
+    }
+
+    [Fact]
+    public void CalculateMethodComplexities_NoBranchCode_ReturnsBaseComplexity()
+    {
+        var result = ComplexityAnalyzer.CalculateMethodComplexities(TestFixtures.NoBranchCode);
+
+        result.Should().ContainSingle()
+            .Which.Should().Be(("Add", 1));
+    }
+
+    [Fact]
+    public void CalculateMethodComplexities_Constructor_IncludesConstructor()
+    {
+        var code = """
+            public class Service
+            {
+                public Service(int x)
+                {
+                    if (x > 0) { }
+                }
+
+                public void DoWork() { }
+            }
+            """;
+
+        var result = ComplexityAnalyzer.CalculateMethodComplexities(code);
+
+        result.Should().HaveCount(2);
+        result.Should().Contain(("Service", 2));
+        result.Should().Contain(("DoWork", 1));
+    }
+
+    [Fact]
+    public void CalculateMethodComplexities_ExcludesPropertyAccessors()
+    {
+        var code = """
+            public class Model
+            {
+                private int _value;
+                public int Value
+                {
+                    get { if (_value > 0) return _value; return 0; }
+                    set { _value = value; }
+                }
+
+                public void DoWork() { }
+            }
+            """;
+
+        var result = ComplexityAnalyzer.CalculateMethodComplexities(code);
+
+        result.Should().ContainSingle()
+            .Which.Name.Should().Be("DoWork");
+    }
+
+    [Fact]
+    public void Analyze_PopulatesMethodComplexity()
+    {
+        var projectDirs = new List<string> { "MyApp" };
+        var fullDir = Path.Combine("/repo", "MyApp");
+        var file = Path.Combine("/repo", "MyApp", "Calculator.cs");
+
+        _fileSystem.DirectoryExists(fullDir).Returns(true);
+        _fileSystem.GetFiles(fullDir, "*.cs", true).Returns([file]);
+        _fileSystem.ReadAllText(file).Returns(TestFixtures.SimpleComplexityCode);
+
+        var result = _sut.Analyze("/repo", projectDirs, []);
+
+        result.MethodComplexity.Should().ContainKey("MyApp/Calculator.cs");
+        result.MethodComplexity["MyApp/Calculator.cs"].Should().ContainSingle()
+            .Which.Name.Should().Be("Calculate");
+    }
 }

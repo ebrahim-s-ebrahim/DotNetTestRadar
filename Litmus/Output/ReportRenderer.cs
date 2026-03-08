@@ -4,6 +4,7 @@ using System.Text.Json;
 using Litmus.Abstractions;
 using Litmus.Models;
 using Spectre.Console;
+using System.Collections.Generic;
 
 namespace Litmus.Output;
 
@@ -18,7 +19,8 @@ public class ReportRenderer
 
     public void Render(List<FileRiskReport> reports, int top, bool noColor, string? outputPath, int skippedFiles,
         Dictionary<string, double>? baseline = null, string format = "table",
-        bool verbose = false, bool quiet = false, DateTime? sinceDate = null)
+        bool verbose = false, bool quiet = false, DateTime? sinceDate = null,
+        Dictionary<string, List<MethodDetail>>? methodDetails = null)
     {
         // Structured stdout formats: write JSON, CSV, or HTML to Console.Out and skip the table
         if (format is "json" or "csv" or "html")
@@ -116,6 +118,36 @@ public class ReportRenderer
             columns.Add(new Markup($"[{rowStyle}]{r.PriorityLevel}[/]"));
 
             table.AddRow(columns);
+
+            // Method-level detail rows (--detailed)
+            if (methodDetails != null && methodDetails.TryGetValue(r.File, out var methods))
+            {
+                foreach (var method in methods)
+                {
+                    var methodCoverage = method.CoverageRate.HasValue
+                        ? $"{method.CoverageRate.Value * 100:F0}%"
+                        : "\u2014";
+
+                    var methodColumns = new List<Markup>
+                    {
+                        new(""),
+                        new($"[dim]  {method.Name.EscapeMarkup()}[/]"),
+                        new($"[dim]\u2014[/]"),
+                        new($"[dim]{methodCoverage}[/]"),
+                        new($"[dim]{method.Complexity}[/]"),
+                        new(""),
+                        new(""),
+                        new("")
+                    };
+
+                    if (hasBaseline)
+                        methodColumns.Add(new Markup(""));
+
+                    methodColumns.Add(new Markup(""));
+
+                    table.AddRow(methodColumns);
+                }
+            }
         }
 
         AnsiConsole.Write(table);

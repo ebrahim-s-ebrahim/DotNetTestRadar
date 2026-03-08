@@ -9,6 +9,7 @@ public class ComplexityResult
 {
     public Dictionary<string, int> FileComplexity { get; set; } = new();
     public Dictionary<string, double> FileComplexityNorm { get; set; } = new();
+    public Dictionary<string, List<(string Name, int Complexity)>> MethodComplexity { get; set; } = new();
     public int SkippedFiles { get; set; }
 }
 
@@ -47,6 +48,10 @@ public class ComplexityAnalyzer
                     var content = _fileSystem.ReadAllText(file);
                     var complexity = CalculateFileComplexity(content);
                     result.FileComplexity[relativePath] = complexity;
+
+                    var methodDetails = CalculateMethodComplexities(content);
+                    if (methodDetails.Count > 0)
+                        result.MethodComplexity[relativePath] = methodDetails;
                 }
                 catch
                 {
@@ -67,6 +72,33 @@ public class ComplexityAnalyzer
         }
 
         return result;
+    }
+
+    public static List<(string Name, int Complexity)> CalculateMethodComplexities(string sourceCode)
+    {
+        var tree = CSharpSyntaxTree.ParseText(sourceCode);
+        var root = tree.GetRoot();
+        var methods = new List<(string Name, int Complexity)>();
+
+        foreach (var method in root.DescendantNodes().OfType<BaseMethodDeclarationSyntax>())
+        {
+            var name = method switch
+            {
+                MethodDeclarationSyntax m => m.Identifier.Text,
+                ConstructorDeclarationSyntax c => c.Identifier.Text,
+                DestructorDeclarationSyntax d => "~" + d.Identifier.Text,
+                OperatorDeclarationSyntax o => "operator " + o.OperatorToken.Text,
+                ConversionOperatorDeclarationSyntax co => "operator " + co.Type,
+                _ => null
+            };
+
+            if (name == null) continue;
+
+            var complexity = CalculateMethodComplexity(method);
+            methods.Add((name, complexity));
+        }
+
+        return methods;
     }
 
     public static int CalculateFileComplexity(string sourceCode)

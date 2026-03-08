@@ -94,6 +94,11 @@ public class ScanCommand
             Description = "Exit with code 1 if any file's Risk Score or Starting Priority exceeds this value (0.0-2.0)"
         };
 
+        var detailedOption = new Option<bool>("--detailed")
+        {
+            Description = "Expand top-ranked files with per-method coverage and complexity"
+        };
+
         var command = new Command(
             "scan",
             "Run dotnet test, collect code coverage, and analyze the solution in one step")
@@ -112,7 +117,8 @@ public class ScanCommand
             timeoutOption,
             coverageToolOption,
             noCoverageOption,
-            failOnThresholdOption
+            failOnThresholdOption,
+            detailedOption
         };
 
         command.SetAction(parseResult =>
@@ -140,6 +146,7 @@ public class ScanCommand
                 Verbose = parseResult.GetValue(verboseOption),
                 Quiet = parseResult.GetValue(quietOption),
                 NoCoverage = parseResult.GetValue(noCoverageOption),
+                Detailed = parseResult.GetValue(detailedOption),
                 FailOnThreshold = parseResult.GetValue(failOnThresholdOption)
             };
 

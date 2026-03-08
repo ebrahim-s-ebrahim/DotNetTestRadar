@@ -301,6 +301,58 @@ public static class TestFixtures
         }
         """;
 
+    public static string CoberturaWithMethodElements => """
+        <?xml version="1.0" encoding="utf-8"?>
+        <coverage line-rate="0.5" branch-rate="0" version="1.0" timestamp="1234567890">
+          <packages>
+            <package name="MyApp">
+              <classes>
+                <class name="MyApp.Services.OrderService" filename="MyApp/Services/OrderService.cs" line-rate="0.5">
+                  <methods>
+                    <method name="ProcessOrder" signature="(Order)">
+                      <lines>
+                        <line number="10" hits="1"/>
+                        <line number="11" hits="1"/>
+                        <line number="12" hits="0"/>
+                        <line number="13" hits="0"/>
+                      </lines>
+                    </method>
+                    <method name="ValidateInput" signature="(string)">
+                      <lines>
+                        <line number="20" hits="0"/>
+                        <line number="21" hits="0"/>
+                        <line number="22" hits="0"/>
+                      </lines>
+                    </method>
+                    <method name="&lt;ProcessOrder&gt;b__0" signature="(int)">
+                      <lines>
+                        <line number="14" hits="1"/>
+                      </lines>
+                    </method>
+                    <method name=".ctor" signature="()">
+                      <lines>
+                        <line number="5" hits="1"/>
+                      </lines>
+                    </method>
+                  </methods>
+                  <lines>
+                    <line number="5" hits="1"/>
+                    <line number="10" hits="1"/>
+                    <line number="11" hits="1"/>
+                    <line number="12" hits="0"/>
+                    <line number="13" hits="0"/>
+                    <line number="14" hits="1"/>
+                    <line number="20" hits="0"/>
+                    <line number="21" hits="0"/>
+                    <line number="22" hits="0"/>
+                  </lines>
+                </class>
+              </classes>
+            </package>
+          </packages>
+        </coverage>
+        """;
+
     public static string ComplexCode => """
         using System;
 

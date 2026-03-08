@@ -77,6 +77,11 @@ public class AnalyzeCommand
             Description = "Exit with code 1 if any file's Risk Score or Starting Priority exceeds this value (0.0-2.0)"
         };
 
+        var detailedOption = new Option<bool>("--detailed")
+        {
+            Description = "Expand top-ranked files with per-method coverage and complexity"
+        };
+
         var command = new Command("analyze", "Analyze .NET solution for high-risk files and starting priority")
         {
             solutionOption,
@@ -90,7 +95,8 @@ public class AnalyzeCommand
             formatOption,
             verboseOption,
             quietOption,
-            failOnThresholdOption
+            failOnThresholdOption,
+            detailedOption
         };
 
         command.SetAction(parseResult =>
@@ -117,6 +123,7 @@ public class AnalyzeCommand
                 Format = parseResult.GetValue(formatOption)!,
                 Verbose = parseResult.GetValue(verboseOption),
                 Quiet = parseResult.GetValue(quietOption),
+                Detailed = parseResult.GetValue(detailedOption),
                 FailOnThreshold = parseResult.GetValue(failOnThresholdOption)
             };
 
@@ -384,11 +391,50 @@ public class AnalyzeCommand
                 }
             }
 
-            // Step 5: Render
+            // Step 5: Build method details for --detailed mode
+            Dictionary<string, List<MethodDetail>>? methodDetails = null;
+            if (options.Detailed && options.Format == "table")
+            {
+                methodDetails = new Dictionary<string, List<MethodDetail>>();
+                var solutionRelPath = Path.GetRelativePath(parseResult.GitRoot, parseResult.SolutionDirectory)
+                    .Replace('\\', '/');
+                var detailCount = Math.Min(5, options.Top);
+
+                foreach (var report in reports.Take(detailCount))
+                {
+                    var gitRootRelPath = report.File;
+                    if (solutionRelPath != ".")
+                        gitRootRelPath = solutionRelPath + "/" + report.File;
+
+                    var methodComplexities = complexityResult.MethodComplexity
+                        .GetValueOrDefault(gitRootRelPath, []);
+
+                    var methodCoverages = CoverageParser.GetMethodCoverageForFile(coverageResult, report.File);
+                    var coverageLookup = methodCoverages.ToDictionary(m => m.Name, m => m.CoverageRate);
+
+                    var details = new List<MethodDetail>();
+                    foreach (var (name, complexity) in methodComplexities)
+                    {
+                        details.Add(new MethodDetail
+                        {
+                            Name = name,
+                            Complexity = complexity,
+                            CoverageRate = coverageLookup.TryGetValue(name, out var rate) ? rate : null
+                        });
+                    }
+
+                    details = details.OrderByDescending(m => m.Complexity).ToList();
+
+                    if (details.Count > 0)
+                        methodDetails[report.File] = details;
+                }
+            }
+
+            // Step 6: Render
             var renderer = new ReportRenderer(fileSystem);
             var totalSkippedFiles = complexityResult.SkippedFiles + dependencyResult.SkippedFiles;
             renderer.Render(reports, options.Top, options.NoColor, options.OutputPath, totalSkippedFiles, baseline,
-                options.Format, options.Verbose, options.Quiet, options.Since);
+                options.Format, options.Verbose, options.Quiet, options.Since, methodDetails);
 
             if (!options.Quiet && options.NoCoverage)
             {

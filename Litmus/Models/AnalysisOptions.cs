@@ -14,6 +14,7 @@ public class AnalysisOptions
     public bool Verbose { get; set; }
     public bool Quiet { get; set; }
     public bool NoCoverage { get; set; }
+    public bool Detailed { get; set; }
     public double? FailOnThreshold { get; set; }
 
     public static readonly string[] DefaultExclusions =

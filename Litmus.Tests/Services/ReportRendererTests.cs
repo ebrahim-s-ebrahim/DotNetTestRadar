@@ -463,7 +463,77 @@ public class ReportRendererTests
         }
     }
 
-    private static string CaptureAnsiConsole(Action action)
+    [Fact]
+    public void Render_WithMethodDetails_RendersMethodRows()
+    {
+        var reports = new List<FileRiskReport>
+        {
+            new()
+            {
+                File = "Services/OrderService.cs",
+                Commits = 10,
+                CoverageRate = 0.5,
+                CyclomaticComplexity = 20,
+                StartingPriority = 0.8,
+                PriorityLevel = "High",
+                RiskScore = 0.7,
+                RiskLevel = "High",
+                DependencyLevel = "Low"
+            }
+        };
+
+        var methodDetails = new Dictionary<string, List<MethodDetail>>
+        {
+            ["Services/OrderService.cs"] =
+            [
+                new() { Name = "ProcessOrder", Complexity = 12, CoverageRate = 0.5 },
+                new() { Name = "ValidateInput", Complexity = 8, CoverageRate = null }
+            ]
+        };
+
+        var output = CaptureAnsiConsole(() =>
+        {
+            var renderer = new ReportRenderer(Substitute.For<IFileSystem>());
+            renderer.Render(reports, 20, noColor: true, outputPath: null, skippedFiles: 0,
+                methodDetails: methodDetails);
+        });
+
+        output.Should().Contain("ProcessOrder");
+        output.Should().Contain("ValidateInput");
+        output.Should().Contain("50%");  // method coverage
+        output.Should().Contain("12");   // method complexity
+    }
+
+    [Fact]
+    public void Render_WithoutMethodDetails_DoesNotRenderMethodRows()
+    {
+        var reports = new List<FileRiskReport>
+        {
+            new()
+            {
+                File = "Services/OrderService.cs",
+                Commits = 10,
+                CoverageRate = 0.5,
+                CyclomaticComplexity = 20,
+                StartingPriority = 0.8,
+                PriorityLevel = "High",
+                RiskScore = 0.7,
+                RiskLevel = "High",
+                DependencyLevel = "Low"
+            }
+        };
+
+        var output = CaptureAnsiConsole(() =>
+        {
+            var renderer = new ReportRenderer(Substitute.For<IFileSystem>());
+            renderer.Render(reports, 20, noColor: true, outputPath: null, skippedFiles: 0);
+        });
+
+        output.Should().Contain("OrderService.cs");
+        output.Should().NotContain("ProcessOrder");
+    }
+
+    private static string CaptureAnsiConsole(Action action, int width = 200)
     {
         var previous = AnsiConsole.Console;
         var sw = new StringWriter();
@@ -473,6 +543,7 @@ public class ReportRendererTests
             ColorSystem = ColorSystemSupport.NoColors,
             Interactive = InteractionSupport.No
         });
+        AnsiConsole.Profile.Width = width;
         try
         {
             action();
