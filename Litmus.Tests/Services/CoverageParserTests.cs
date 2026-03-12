@@ -367,6 +367,7 @@ public class CoverageParserTests
             coverageLookup[name] = rate;
 
         coverageLookup.Should().ContainKey("Generate");
+        coverageLookup["Generate"].Should().Be(0.80); // last value wins
     }
 
     [Fact]
