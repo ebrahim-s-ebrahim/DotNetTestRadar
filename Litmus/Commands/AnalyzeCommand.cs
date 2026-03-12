@@ -410,7 +410,9 @@ public class AnalyzeCommand
                         .GetValueOrDefault(gitRootRelPath, []);
 
                     var methodCoverages = CoverageParser.GetMethodCoverageForFile(coverageResult, report.File);
-                    var coverageLookup = methodCoverages.ToDictionary(m => m.Name, m => m.CoverageRate);
+                    var coverageLookup = new Dictionary<string, double>();
+                    foreach (var (name, rate) in methodCoverages)
+                        coverageLookup[name] = rate;
 
                     var details = new List<MethodDetail>();
                     foreach (var (name, complexity) in methodComplexities)
