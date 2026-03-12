@@ -341,6 +341,36 @@ public class CoverageParserTests
     }
 
     [Fact]
+    public void GetMethodCoverageForFile_DuplicateMethodNames_CanBuildLookupWithoutError()
+    {
+        var coverage = new CoverageResult
+        {
+            MethodCoverage =
+            {
+                ["MyApp/Services/Generator.cs"] =
+                [
+                    ("Generate", 0.75),
+                    ("Generate", 0.50),
+                    ("Generate", 0.80)
+                ]
+            }
+        };
+
+        var methods = CoverageParser.GetMethodCoverageForFile(coverage, "Services/Generator.cs");
+
+        methods.Should().HaveCount(3);
+        methods.Should().AllSatisfy(m => m.Name.Should().Be("Generate"));
+
+        // Verify the lookup pattern used in AnalyzeCommand handles duplicates
+        var coverageLookup = new Dictionary<string, double>();
+        foreach (var (name, rate) in methods)
+            coverageLookup[name] = rate;
+
+        coverageLookup.Should().ContainKey("Generate");
+        coverageLookup["Generate"].Should().Be(0.80); // last value wins
+    }
+
+    [Fact]
     public void Merge_MethodCoverage_KeepsLargerSet()
     {
         var proj1 = new CoverageResult
