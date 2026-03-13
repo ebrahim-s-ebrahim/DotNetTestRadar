@@ -4,39 +4,32 @@
 [![NuGet Downloads](https://img.shields.io/nuget/dt/dotnet-litmus.svg?include_prereleases)](https://www.nuget.org/packages/dotnet-litmus)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/ebrahim-s-ebrahim/litmus/blob/main/LICENSE)
 
-*Find where to start testing in a legacy codebase.*
+**You inherited a codebase with 200 files and zero tests. Where do you even start?**
+
+Litmus tells you. Two commands, one ranked list — start testing where it actually matters.
 
 <p align="center">
   <img src="docs/demo.svg" alt="Litmus output showing a ranked table of files by risk and testability" width="860">
 </p>
 
-Litmus is a .NET global CLI tool that answers two questions:
-
-1. **Where is it dangerous to leave code untested?** — ranked by *Risk Score*
-2. **Where can you actually start testing today?** — ranked by *Starting Priority*
-
-The result is a ranked table. Files that are dangerous **and** practically testable appear at the top. Files that are dangerous but heavily entangled appear lower, with a clear signal to introduce [seams](https://www.oreilly.com/library/view/working-effectively-with/0131177052/) first.
-
-## Quick Start
+## Get Started in 30 Seconds
 
 ```bash
-# Install
 dotnet tool install --global dotnet-litmus
-
-# Run from the directory containing your .sln file
 dotnet-litmus scan
 ```
 
-That's it. The tool auto-detects the solution file, runs tests, collects coverage, and produces a prioritized report.
+That's it. Litmus finds your solution, runs your tests, collects coverage, and hands you a prioritized action plan. No config files, no dashboards, no setup.
 
-### No tests yet?
+**No tests yet?** Even better — that's exactly what Litmus is for:
 
 ```bash
-# Analyze without running tests — ranks by churn, complexity, and testability
 dotnet-litmus scan --no-coverage
 ```
 
-## Understanding the Output
+## What You Get
+
+Not another dashboard. Not a wall of warnings. A clear answer to *"what should I test first?"*
 
 ```
 ── Act Now ──────────────────────────────────────────────────────────────────────
@@ -50,247 +43,108 @@ Rank  File                           Commits  Coverage  Complexity  Coupling  Ri
 ── Monitor ──────────────────────────────────────────────────────────────────────
 4     Data/LegacyDbSync.cs           41       0%        201         Very High High    Low
 
-4 files analyzed. 2 high-priority (start today), 1 medium-priority (next sprint). 2 high-risk file(s) need seam introduction before testing.
-
-Complexity: sum of conditionals, loops, catches, switch cases, logical ops (&&/||/??) per file
-Risk:       churn x coverage gaps x complexity — Low | Medium | High
-Priority:   risk adjusted for coupling — Low | Medium | High
-Coupling:   how tightly bound to concrete dependencies — Low | Medium | High | Very High
+4 files analyzed. 2 high-priority (start today), 1 medium-priority (next sprint).
+2 high-risk file(s) need seam introduction before testing.
 ```
 
-### Reading the table
+**Act Now** — high risk, low coupling. Write tests today.
+**Next Sprint** — high risk, but tangled. Introduce [seams](https://www.oreilly.com/library/view/working-effectively-with/0131177052/) first, then test.
+**Monitor** — keep an eye on it, but don't start here.
 
-| Column | Meaning |
+Notice how `PaymentGateway.cs` has *higher* risk than `OrderService.cs` but lands in "Next Sprint"? That's Litmus telling you: *"Yes, it's dangerous — but it's too entangled to test right now. Introduce seams first."*
+
+That's the insight you can't get from coverage reports alone.
+
+## Why Litmus?
+
+Most tools tell you *what's untested*. Litmus tells you *where to start* — and what's blocking you.
+
+It cross-references **four signals** that no single tool combines:
+
+| Signal | The question it answers |
 |---|---|
-| **Commits** | Number of git commits touching this file in the analysis window |
-| **Coverage** | Line coverage from the Cobertura report |
-| **Complexity** | Cyclomatic complexity (sum across all methods) |
-| **Coupling** | Cost of adding test seams: `Low`, `Medium`, `High`, `Very High` |
-| **Risk** | How dangerous it is to leave untested: `Low`, `Medium`, `High` |
-| **Priority** | Where to start testing today: `Low`, `Medium`, `High` |
+| 🔄 **Git churn** | Is this file changing often? (high churn = high blast radius) |
+| 🧪 **Code coverage** | Is anyone testing it? |
+| 🧩 **Cyclomatic complexity** | How many paths can break? |
+| 🔗 **Coupling analysis** | Can you actually write a test for it today? |
 
-By default, output is **grouped by priority level**: *Act Now* (High), *Next Sprint* (Medium), *Monitor* (Low). Use `--no-group` for a flat table sorted by priority score.
+That last one is the key. Litmus uses **Roslyn** to detect unseamed dependencies — things like `new HttpClient()`, `DateTime.Now`, concrete constructor params — that make a file *impossible* to unit test without refactoring first. Then it adjusts the priority accordingly.
 
-`PaymentGateway.cs` has a *higher* Risk than `OrderService.cs`, but its `Very High` coupling level pushes its Priority down to Medium. The tool is telling you: *"This file is dangerous, but introduce seams before attempting to test it."*
+The result: **a ranked list ordered by *practical testability***, not just risk.
 
-### Row colors
+## Go Deeper
 
-| Color | Meaning |
-|---|---|
-| Red | High priority — risky and testable now |
-| Yellow | Medium priority — plan for next sprint |
-| Default | Low priority — backlog or too entangled |
+### Drill into methods
 
-The **Risk** column is independently colored to highlight dangerous-but-entangled files.
-
-### Priority and risk levels
-
-| Level | Score Range | Priority meaning | Risk meaning |
-|---|---|---|---|
-| **High** | >= 0.6 | Start here — testable now | Changes often, poorly tested, complex |
-| **Medium** | >= 0.2 | Plan for next sprint | Moderate risk |
-| **Low** | < 0.2 | Backlog or too entangled | Low churn, well-tested, or simple |
-
-### Method-level drill-down
-
-Use `--detailed` to expand the top 5 files with per-method coverage and complexity:
-
-```
+```bash
 dotnet-litmus scan --detailed
 ```
 
 ```
-Rank  File                       Commits  Coverage  Complexity  Coupling  Risk  Priority
-1     Services/OrderService.cs   47       12%       94          Low       High  High
-        ProcessOrder             —        50%       25
-        ValidateInput            —        0%        18
-2     Services/ReportFormatter.cs 22      31%       67          Low       High  High
-        FormatReport             —        10%       30
-        BuildHeader              —        80%       8
+1  Services/OrderService.cs   47   12%   94   Low   High  High
+     ProcessOrder             —    50%   25
+     ValidateInput            —    0%    18
 ```
 
-Method rows show coverage and complexity only — churn is a file-level signal (shown as `—`), and no method-level priority is computed since only 2 of 4 signals are available. Methods are sorted by complexity descending.
+See exactly which methods inside a high-risk file need attention first.
 
-## Commands
-
-Litmus has two commands: `scan` runs tests and analyzes in one step; `analyze` skips testing and uses an existing coverage file.
-
-### `scan` — run tests and analyze in one step
+### Track progress over time
 
 ```bash
-# Auto-detect solution file from current directory
-dotnet-litmus scan
-
-# Specify solution explicitly
-dotnet-litmus scan --solution MyApp.sln
-
-# Target a specific test directory
-dotnet-litmus scan --solution MyApp.sln --tests-dir tests/MyApp.Tests
-
-# Export results
-dotnet-litmus scan --output report.json
-
-# Export an HTML report to share with the team
-dotnet-litmus scan --output report.html
+dotnet-litmus scan --output baseline.json        # save a snapshot
+dotnet-litmus scan --baseline baseline.json       # compare later
 ```
 
-`scan` auto-detects the solution file when a single `.sln` or `.slnx` exists in the current directory. It then:
+A **Delta** column shows what improved, what degraded, and what's new.
 
-1. Runs `dotnet test` with the XPlat Code Coverage collector
-2. Streams live output so you see build progress and test results in real time
-3. Discovers and merges all `coverage.cobertura.xml` files (one per test project)
-4. Runs the full analysis pipeline (git churn, complexity, seam detection, scoring)
-5. Cleans up temporary test results
-
-### `analyze` — use an existing coverage file
+### Get plain-English explanations
 
 ```bash
-# Auto-detect solution, provide coverage file
-dotnet-litmus analyze --coverage TestResults/.../coverage.cobertura.xml
-
-# Specify solution explicitly
-dotnet-litmus analyze --solution MyApp.sln --coverage coverage.xml
+dotnet-litmus scan --explain
 ```
 
-Use `analyze` when you already have a Cobertura XML coverage report (e.g., from CI).
-
-## CLI Reference
-
-### Shared options
-
-| Option | Default | Description |
-|---|---|---|
-| `--solution` | auto-detect | Path to `.sln` or `.slnx`. Auto-detected when one exists in cwd. |
-| `--since` | 1 year ago | Git history cutoff (ISO date format, e.g. `2025-01-01`) |
-| `--top` | 20 | Number of files to display |
-| `--exclude` | -- | Glob pattern(s) to exclude (repeatable) |
-| `--output` | -- | Export to `.json`, `.csv`, or `.html` file |
-| `--baseline` | -- | Previous JSON export for delta comparison |
-| `--format` | table | Stdout format: `table`, `json`, `csv`, or `html` |
-| `--verbose` | false | Show detailed intermediate scores |
-| `--quiet` | false | Suppress all output except errors |
-| `--fail-on-threshold` | -- | Exit with code 1 if any file's Risk Score or Starting Priority exceeds this value (0.0-2.0) |
-| `--detailed` | false | Expand top-ranked files with per-method coverage and complexity |
-| `--explain` | false | Show plain-English annotations explaining risk/priority drivers per file |
-| `--no-group` | false | Show flat table instead of grouped by priority level |
-| `--no-color` | false | Disable colored output |
-
-### `scan`-only options
-
-| Option | Default | Description |
-|---|---|---|
-| `--tests-dir` | solution file | Directory or project to run `dotnet test` against |
-| `--no-coverage` | false | Skip test execution and coverage collection |
-| `--coverage-tool` | coverlet | Coverage collector: `coverlet` or `dotnet-coverage` |
-| `--timeout` | 10 | Maximum minutes for test execution |
-
-### `analyze`-only options
-
-| Option | Default | Description |
-|---|---|---|
-| `--coverage` | *required* | Path to Cobertura XML coverage file |
-
-## Prerequisites
-
-- [.NET 8 SDK](https://dotnet.microsoft.com/download) or later (including .NET 9 and .NET 10)
-- **git** installed and available on PATH
-- For `scan`: test projects must reference [`coverlet.collector`](https://www.nuget.org/packages/coverlet.collector) (or use `--coverage-tool dotnet-coverage`)
-- For `scan --no-coverage`: no test projects or coverage tooling required
-- For `analyze`: a pre-generated Cobertura XML coverage report
-
-## Installation
+### Export and share
 
 ```bash
-# From NuGet (recommended)
-dotnet tool install --global dotnet-litmus
-
-# Or from a local build
-dotnet pack Litmus/Litmus.csproj -c Release
-dotnet tool install --global --add-source Litmus/bin/Release dotnet-litmus
-
-# Or run without installing
-dotnet run --project Litmus -- scan
+dotnet-litmus scan --output report.html           # shareable HTML with sortable table
+dotnet-litmus scan --format json | jq '.[].file'  # pipe JSON to your tools
+dotnet-litmus scan --output results.csv            # CSV for spreadsheets
 ```
 
-## Examples
+## Features at a Glance
 
-### Scan the last 6 months, show top 10
-
-```bash
-dotnet-litmus scan --since 2025-08-01 --top 10
-```
-
-### Use dotnet-coverage instead of coverlet
-
-```bash
-dotnet tool install --global dotnet-coverage
-dotnet-litmus scan --coverage-tool dotnet-coverage
-```
-
-### Exclude generated code
-
-```bash
-dotnet-litmus analyze \
-  --coverage coverage.xml \
-  --exclude "*.Generated.cs" \
-  --exclude "**/ViewModels/*.cs" \
-  --output report.json
-```
-
-### Drill down into top files
-
-```bash
-dotnet-litmus scan --detailed --top 10
-```
-
-Shows method-level coverage and complexity for the top 5 files (out of the 10 displayed). Useful for identifying which specific methods inside a high-risk file need attention first.
-
-### Legacy codebase with no tests
-
-```bash
-dotnet-litmus scan --no-coverage --top 10
-```
-
-### Compare against a baseline
-
-```bash
-# Save a baseline
-dotnet-litmus scan --output baseline.json
-
-# Later: compare
-dotnet-litmus scan --baseline baseline.json
-```
-
-When `--baseline` is provided, a **Delta** column appears showing how each file's Starting Priority changed (`+0.15` = degraded, `-0.10` = improved, `NEW` = not in baseline). A summary reports: `vs baseline: N improved, N degraded, N new, N removed.`
-
-### Machine-readable output
-
-```bash
-# JSON to stdout
-dotnet-litmus analyze --coverage coverage.xml --format json | jq '.[].file'
-
-# CSV to stdout
-dotnet-litmus analyze --coverage coverage.xml --format csv > results.csv
-
-# Quiet mode: only exit code + file export
-dotnet-litmus scan --quiet --output report.json
-```
-
-### HTML report
-
-```bash
-# Self-contained HTML file with a sortable table — share in Slack or attach to a PR
-dotnet-litmus scan --output report.html
-
-# Or pipe to stdout
-dotnet-litmus analyze --coverage coverage.xml --format html > report.html
-```
+- 🔍 **Auto-detects** your solution file — just run from the project root
+- ⚡ **One command** does everything — tests, coverage, analysis, report
+- 📊 **Grouped output** — Act Now / Next Sprint / Monitor
+- 🎯 **Seam detection** — knows when a file is too entangled to test directly
+- 📈 **Baseline comparison** — track how test debt changes over time
+- 🔬 **Method-level drill-down** — pinpoint the riskiest methods
+- 💬 **Plain-English explanations** — `--explain` tells you *why* each file ranks where it does
+- 📄 **Multiple formats** — table, JSON, CSV, HTML
+- 🚦 **CI quality gate** — `--fail-on-threshold` breaks the build on risk regressions
+- 🧰 **Flexible coverage** — works with coverlet or dotnet-coverage
+- 🚫 **No tests? No problem** — `--no-coverage` works without any test projects
 
 ## CI/CD Integration
 
-Litmus works well in CI pipelines for tracking test debt over time.
+Litmus fits naturally into CI pipelines. Track test debt over time, catch regressions, and share reports with the team.
 
-### GitHub Actions example
+```yaml
+# .github/workflows/litmus.yml
+- name: Install Litmus
+  run: dotnet tool install --global dotnet-litmus
+
+- name: Run analysis
+  run: dotnet-litmus scan --output report.json --quiet
+
+- name: Quality gate
+  run: dotnet-litmus scan --fail-on-threshold 1.0 --quiet
+```
+
+> **Important:** Use `fetch-depth: 0` in your checkout step — Litmus needs full git history for churn analysis.
+
+<details>
+<summary>Full GitHub Actions example with baseline tracking</summary>
 
 ```yaml
 name: Litmus Analysis
@@ -302,7 +156,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history needed for git churn
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -311,26 +165,13 @@ jobs:
       - name: Install Litmus
         run: dotnet tool install --global dotnet-litmus
 
-      - name: Run analysis
-        run: dotnet-litmus scan --output report.json --format json --quiet
-
-      - name: Upload report
-        uses: actions/upload-artifact@v4
-        with:
-          name: litmus-report
-          path: report.json
-```
-
-### Baseline comparison in CI
-
-```yaml
       - name: Download previous baseline
         uses: actions/download-artifact@v4
         with:
           name: litmus-baseline
-        continue-on-error: true  # First run won't have a baseline
+        continue-on-error: true
 
-      - name: Run analysis with baseline
+      - name: Run analysis
         run: |
           if [ -f baseline.json ]; then
             dotnet-litmus scan --output report.json --baseline baseline.json
@@ -345,201 +186,208 @@ jobs:
           path: report.json
 ```
 
-### Quality gate
+</details>
 
-```bash
-# Fail the build if any file scores above 1.0
-dotnet-litmus scan --fail-on-threshold 1.0 --quiet
-```
-
-### Key flags for CI
-
-| Flag | Purpose |
+| CI flag | Purpose |
 |---|---|
-| `--quiet` | No console output, only exit code and file export |
+| `--quiet` | Suppress console output — only exit code and file export |
 | `--output report.json` | Machine-readable export |
 | `--output report.html` | Shareable HTML report |
-| `--format json` | JSON to stdout for piping |
-| `--no-color` | Disable ANSI codes in log output |
-| `--baseline previous.json` | Track regressions over time |
-| `--fail-on-threshold 1.0` | Fail the build if any file exceeds a score |
+| `--baseline previous.json` | Detect regressions between runs |
+| `--fail-on-threshold 1.0` | Fail the build if any file exceeds a risk score |
+| `--no-color` | Clean logs without ANSI codes |
 
-## How Scores Are Calculated
+## How It Works
 
-Litmus cross-references four signals to produce its scores:
+Litmus analyzes your codebase in two phases:
 
-| Signal | What it measures |
-|---|---|
-| **Git churn** | How frequently a file changes |
-| **Code coverage** | How well a file is tested |
-| **Cyclomatic complexity** | How complex the file's logic is |
-| **Coupling** | How many unseamed dependencies block testability |
-
-A "seam" (from Michael Feathers' *Working Effectively with Legacy Code*) is a place where you can substitute a dependency without changing production code — typically via dependency injection or an interface. An "unseamed" dependency is one a test cannot replace, like a direct `new HttpClient()` or `DateTime.Now` call.
-
-<details>
-<summary>Phase 1 — Risk Score</summary>
+**Phase 1 — Risk Score:** How dangerous is it to leave this file untested?
 
 ```
-RiskScore = ChurnNorm x (1 - CoverageRate) x (1 + ComplexityNorm)
+RiskScore = Churn × (1 - Coverage) × (1 + Complexity)
 ```
 
-Each factor is normalized to [0, 1]. Range: 0 to 2.0. A file that changes constantly, has no tests, and is highly complex scores near 2.0.
-
-</details>
-
-<details>
-<summary>Phase 2 — Starting Priority</summary>
-
-The coupling score measures **unseamed dependencies** — things a test cannot substitute. Six signals are detected via Roslyn:
-
-| Signal | Weight | What it detects |
-|---|---|---|
-| Unseamed infrastructure calls | 2.0 | `DateTime.Now`, `File.*`, `new HttpClient()`, `new DbContext()` |
-| Direct instantiation in methods | 1.5 | `new ConcreteType()` (excluding DTOs, exceptions, collections) |
-| Concrete constructor parameters | 0.5 | Constructor params without interface convention |
-| Static calls on non-utility types | 1.0 | `MyHelper.Transform()` (excluding `Math`, `Convert`, etc.) |
-| Async seam calls | 1.5 | `await _httpClient.GetAsync()`, `await _db.SaveChangesAsync()` |
-| Concrete downcasts | 1.0 | `(ConcreteType)expr` and `expr as ConcreteType` |
-
-DI registration files (`Program.cs`, `Startup.cs`, files with `AddScoped`/`AddSingleton`/`AddTransient`) get a zeroed coupling score.
+**Phase 2 — Starting Priority:** Can you actually test it today?
 
 ```
-StartingPriority = RiskScore x (1 - CouplingNorm)
+StartingPriority = RiskScore × (1 - Coupling)
 ```
 
-Fully seamed (`CouplingNorm = 0`) -> Priority equals Risk.
-Maximally entangled (`CouplingNorm = 1`) -> Priority drops to 0.
+A file with `Very High` coupling gets its priority *reduced* — not because it's safe, but because you need to introduce seams before you can test it. High risk + low coupling = start here.
 
-</details>
+> For the full scoring methodology, seam detection signals, and architecture details, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## How is this different from SonarQube?
 
-SonarQube is a code quality platform that reports code smells, bugs, and coverage gaps — but it doesn't tell you *where to start testing*. It has no concept of git churn, no seam detection, and no prioritized starting list.
-
-Litmus is purpose-built for a different question: *"I inherited a legacy codebase with little or no test coverage. Which files should I test first?"*
+SonarQube monitors code quality. Litmus answers a different question: *"I just inherited this codebase — where do I start testing?"*
 
 | | SonarQube | Litmus |
 |---|---|---|
 | **Goal** | Broad code quality monitoring | Prioritized test starting list |
 | **Signals** | Static analysis rules, coverage % | Git churn + coverage + complexity + seam detection |
-| **Output** | Dashboard of issues | Ranked table: start here, plan next, introduce seams first |
+| **Output** | Dashboard of issues | Ranked action plan: start here, plan next, introduce seams first |
 | **Setup** | Server, database, CI integration | `dotnet tool install`, run from terminal |
-| **Delta tracking** | Requires paid tier for branch analysis | `--baseline` flag (free, built-in) |
-| **Cost** | Free tier limited; paid for full features | Free and open source |
+| **Delta tracking** | Paid tier for branch analysis | `--baseline` flag (free, built-in) |
+| **Cost** | Free tier limited; paid for full | Free and open source |
 
-They complement each other. Use SonarQube for ongoing quality gates; use Litmus to decide where to invest testing effort in a legacy codebase.
+They complement each other well. Use SonarQube for ongoing quality gates; use Litmus to prioritize where to invest testing effort.
 
-## Exit Codes
+## CLI Reference
 
-| Code | Meaning |
+### Commands
+
+| Command | Description |
 |---|---|
-| `0` | Success. Analysis completed (or no files found after filters — warning printed). |
-| `1` | Error. Validation failure, missing dependencies, test failure with no coverage, runtime error, or `--fail-on-threshold` exceeded. |
+| `dotnet-litmus scan` | Run tests, collect coverage, and analyze — all in one step |
+| `dotnet-litmus analyze` | Analyze using an existing Cobertura XML coverage file |
+
+### Options
 
 <details>
-<summary>Default exclusions</summary>
+<summary>Shared options (both commands)</summary>
 
-The following patterns are always excluded to reduce noise from auto-generated files:
-
-- `*.Designer.cs`, `*.g.cs`, `*.g.i.cs`, `*.generated.cs`
-- `*AssemblyInfo.cs`, `*GlobalUsings.g.cs`
-- `*.xaml.cs`
-- `**/Migrations/*.cs`, `*ModelSnapshot.cs`
-- `Program.cs`, `Startup.cs`
-- `**/obj/**`, `**/bin/**`, `**/wwwroot/**`
-
-Use `--exclude` to add additional patterns on top of these.
+| Option | Default | Description |
+|---|---|---|
+| `--solution` | auto-detect | Path to `.sln` or `.slnx` |
+| `--since` | 1 year ago | Git history cutoff (e.g., `2025-01-01`) |
+| `--top` | 20 | Number of files to display |
+| `--exclude` | — | Glob pattern(s) to exclude (repeatable) |
+| `--output` | — | Export to `.json`, `.csv`, or `.html` |
+| `--baseline` | — | Previous JSON export for delta comparison |
+| `--format` | table | Stdout format: `table`, `json`, `csv`, `html` |
+| `--detailed` | false | Method-level drill-down for top files |
+| `--explain` | false | Plain-English annotations per file |
+| `--no-group` | false | Flat table instead of grouped output |
+| `--verbose` | false | Show intermediate scores |
+| `--quiet` | false | Suppress all output except errors |
+| `--fail-on-threshold` | — | Exit code 1 if any score exceeds this (0.0–2.0) |
+| `--no-color` | false | Disable colored output |
 
 </details>
 
-## Troubleshooting
+<details>
+<summary>scan-only options</summary>
 
-### No solution file found
+| Option | Default | Description |
+|---|---|---|
+| `--tests-dir` | solution dir | Directory or project for `dotnet test` |
+| `--no-coverage` | false | Skip tests — analyze by churn, complexity, and coupling only |
+| `--coverage-tool` | coverlet | Coverage collector: `coverlet` or `dotnet-coverage` |
+| `--timeout` | 10 | Max minutes for test execution |
 
-If no `--solution` is provided and no single `.sln`/`.slnx` exists in the current directory:
+</details>
+
+<details>
+<summary>analyze-only options</summary>
+
+| Option | Default | Description |
+|---|---|---|
+| `--coverage` | *required* | Path to Cobertura XML coverage file |
+
+</details>
+
+## Installation
 
 ```bash
-# Move to the solution directory
-cd /path/to/your/project
-dotnet-litmus scan
+# From NuGet (recommended)
+dotnet tool install --global dotnet-litmus
 
-# Or specify the path
+# From a local build
+dotnet pack Litmus/Litmus.csproj -c Release
+dotnet tool install --global --add-source Litmus/bin/Release dotnet-litmus
+
+# Or run without installing
+dotnet run --project Litmus -- scan
+```
+
+### Prerequisites
+
+- [.NET 8 SDK](https://dotnet.microsoft.com/download) or later (.NET 9, .NET 10 supported)
+- **git** on PATH
+- For `scan`: test projects need [`coverlet.collector`](https://www.nuget.org/packages/coverlet.collector) (or use `--coverage-tool dotnet-coverage`)
+- For `scan --no-coverage`: no test setup needed at all
+
+## Troubleshooting
+
+<details>
+<summary>No solution file found</summary>
+
+Run from the directory with your `.sln`/`.slnx`, or specify it explicitly:
+
+```bash
 dotnet-litmus scan --solution path/to/MyApp.sln
 ```
 
-If multiple solution files exist, you must specify which one.
+</details>
 
-### Tests fail and no coverage
+<details>
+<summary>Tests fail and no coverage is generated</summary>
 
-If you see *"No coverage files were generated because some tests failed"*, fix the failing tests first. Coverage cannot be collected from failed test runs.
+Coverage can't be collected from failed test runs. Fix failing tests first.
 
-If tests pass but no coverage is generated, your test projects are missing `coverlet.collector`:
+If tests pass but no coverage appears, add the coverlet collector:
 
 ```bash
 dotnet add <test-project> package coverlet.collector
 ```
 
-Or use `dotnet-coverage` which doesn't require a package reference:
+Or switch to `dotnet-coverage` (no package reference needed):
 
 ```bash
 dotnet tool install --global dotnet-coverage
 dotnet-litmus scan --coverage-tool dotnet-coverage
 ```
 
-### No tests in the codebase
+</details>
 
-If your codebase has no tests yet, skip coverage collection entirely:
+<details>
+<summary>Scan hangs during test execution</summary>
 
-```bash
-dotnet-litmus scan --no-coverage
-```
+Usually caused by coverlet. Try in order:
 
-This ranks files by git churn, cyclomatic complexity, and dependency analysis only. All files are treated as 0% coverage. Use this to find where to start writing tests, then re-run without `--no-coverage` once you have coverage data.
+1. Switch to `dotnet-coverage`: `dotnet-litmus scan --coverage-tool dotnet-coverage`
+2. Upgrade `coverlet.collector` to latest
+3. Increase timeout: `dotnet-litmus scan --timeout 30`
+4. Generate coverage separately and use `analyze`
 
-### `scan` hangs during test execution
+</details>
 
-Usually caused by coverlet hanging after tests complete. Solutions in order of preference:
+<details>
+<summary>Default file exclusions</summary>
 
-1. **Use `dotnet-coverage`**: Avoids the coverlet data collector entirely.
-   ```bash
-   dotnet tool install --global dotnet-coverage
-   dotnet-litmus scan --coverage-tool dotnet-coverage
-   ```
+These patterns are always excluded to filter auto-generated noise:
 
-2. **Upgrade coverlet**: Update `coverlet.collector` to the latest version.
+`*.Designer.cs`, `*.g.cs`, `*.g.i.cs`, `*.generated.cs`, `*AssemblyInfo.cs`, `*GlobalUsings.g.cs`, `*.xaml.cs`, `**/Migrations/*.cs`, `*ModelSnapshot.cs`, `Program.cs`, `Startup.cs`, `**/obj/**`, `**/bin/**`, `**/wwwroot/**`
 
-3. **Increase timeout**: For large solutions that just need more time.
-   ```bash
-   dotnet-litmus scan --timeout 30
-   ```
+Add more with `--exclude`.
 
-4. **Use `analyze` directly**: Generate coverage separately.
-   ```bash
-   dotnet-coverage collect "dotnet test MyApp.sln" -f cobertura -o coverage.xml
-   dotnet-litmus analyze --coverage coverage.xml
-   ```
+</details>
 
-### Coverage prerequisites for `analyze`
+## Exit Codes
 
-```bash
-dotnet test --collect:"XPlat Code Coverage"
-```
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `1` | Error — validation failure, test failure, runtime error, or `--fail-on-threshold` exceeded |
 
-For multiple test projects, merge with [ReportGenerator](https://github.com/danielpalme/ReportGenerator):
+## Contributing
+
+Contributions are welcome! Here's how to get started:
 
 ```bash
-dotnet tool install -g dotnet-reportgenerator-globaltool
-reportgenerator -reports:"**/coverage.cobertura.xml" -targetdir:"merged" -reporttypes:Cobertura
-dotnet-litmus analyze --coverage merged/Cobertura.xml
+git clone https://github.com/ebrahim-s-ebrahim/litmus.git
+cd litmus
+dotnet build Litmus.slnx
+dotnet test Litmus.slnx
 ```
 
-The `scan` command does this merge automatically.
+Litmus eats its own dog food — the CI pipeline runs `dotnet-litmus analyze` on itself after every push.
 
-## Solution Format Support
-
-Both classic `.sln` files and the newer `.slnx` XML format are supported. The format is auto-detected from the file extension.
+Before submitting a PR:
+- Run `dotnet test Litmus.slnx` and ensure all tests pass
+- If adding a new feature, include tests in `Litmus.Tests/`
+- Keep the architecture documented — see [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ## License
 
-MIT
+[MIT](LICENSE)
