@@ -155,8 +155,8 @@ public class AnalyzeCommandIntegrationTests : IDisposable
             "cyclomaticComplexity", "riskScore", "riskLevel",
             "infrastructureCalls", "directInstantiations", "concreteConstructorParams",
             "staticCalls", "asyncSeamCalls", "concreteCasts", "isRegistrationFile",
-            "rawDependencyScore", "dependencyNorm",
-            "dependencyLevel", "startingPriority", "priorityLevel"
+            "rawCouplingScore", "couplingNorm",
+            "couplingLevel", "startingPriority", "priorityLevel"
         };
 
         foreach (var result in results)

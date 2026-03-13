@@ -99,6 +99,16 @@ public class ScanCommand
             Description = "Expand top-ranked files with per-method coverage and complexity"
         };
 
+        var explainOption = new Option<bool>("--explain")
+        {
+            Description = "Show a plain-English explanation of each file's risk and priority drivers"
+        };
+
+        var noGroupOption = new Option<bool>("--no-group")
+        {
+            Description = "Show a flat table instead of grouping by priority level"
+        };
+
         var command = new Command(
             "scan",
             "Run dotnet test, collect code coverage, and analyze the solution in one step")
@@ -118,7 +128,9 @@ public class ScanCommand
             coverageToolOption,
             noCoverageOption,
             failOnThresholdOption,
-            detailedOption
+            detailedOption,
+            explainOption,
+            noGroupOption
         };
 
         command.SetAction(parseResult =>
@@ -147,6 +159,8 @@ public class ScanCommand
                 Quiet = parseResult.GetValue(quietOption),
                 NoCoverage = parseResult.GetValue(noCoverageOption),
                 Detailed = parseResult.GetValue(detailedOption),
+                Explain = parseResult.GetValue(explainOption),
+                NoGroup = parseResult.GetValue(noGroupOption),
                 FailOnThreshold = parseResult.GetValue(failOnThresholdOption)
             };
 

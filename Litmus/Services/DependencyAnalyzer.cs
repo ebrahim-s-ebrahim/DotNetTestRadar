@@ -14,8 +14,8 @@ public class FileDependencyData
     public int AsyncSeamCalls { get; set; }
     public int ConcreteCasts { get; set; }
     public bool IsRegistrationFile { get; set; }
-    public double RawDependencyScore { get; set; }
-    public double DependencyNorm { get; set; }
+    public double RawCouplingScore { get; set; }
+    public double CouplingNorm { get; set; }
 }
 
 public class DependencyResult
@@ -155,7 +155,7 @@ public class DependencyAnalyzer
                     if (fileName is "Program.cs" or "Startup.cs" || ContainsDiRegistrations(content))
                     {
                         data.IsRegistrationFile = true;
-                        data.RawDependencyScore = 0;
+                        data.RawCouplingScore = 0;
                     }
 
                     result.Files[relativePath] = data;
@@ -172,12 +172,12 @@ public class DependencyAnalyzer
         // Normalize: divide each raw score by the maximum across non-registration files
         var maxScore = result.Files.Values
             .Where(f => !f.IsRegistrationFile)
-            .Select(f => f.RawDependencyScore)
+            .Select(f => f.RawCouplingScore)
             .DefaultIfEmpty(0).Max();
         foreach (var data in result.Files.Values)
         {
-            data.DependencyNorm = data.IsRegistrationFile ? 0.0
-                : maxScore > 0 ? data.RawDependencyScore / maxScore : 0.0;
+            data.CouplingNorm = data.IsRegistrationFile ? 0.0
+                : maxScore > 0 ? data.RawCouplingScore / maxScore : 0.0;
         }
 
         return result;
@@ -277,7 +277,7 @@ public class DependencyAnalyzer
             StaticCalls = staticCalls,
             AsyncSeamCalls = asyncSeamCalls,
             ConcreteCasts = concreteCasts,
-            RawDependencyScore = rawScore
+            RawCouplingScore = rawScore
         };
     }
 

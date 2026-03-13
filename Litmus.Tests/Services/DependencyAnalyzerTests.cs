@@ -354,7 +354,7 @@ public class DependencyAnalyzerTests
         result.DirectInstantiations.Should().Be(0);
         result.ConcreteConstructorParams.Should().Be(0);
         result.StaticCalls.Should().Be(0);
-        result.RawDependencyScore.Should().Be(0);
+        result.RawCouplingScore.Should().Be(0);
     }
 
     // -------------------------------------------------------------------------
@@ -377,14 +377,14 @@ public class DependencyAnalyzerTests
         var result = DependencyAnalyzer.AnalyzeFile(code);
         result.InfrastructureCalls.Should().Be(1);
         result.DirectInstantiations.Should().Be(1);
-        result.RawDependencyScore.Should().Be(3.5);
+        result.RawCouplingScore.Should().Be(3.5);
     }
 
     [Fact]
     public void AnalyzeFile_FullySeamed_ScoresZero()
     {
         var result = DependencyAnalyzer.AnalyzeFile(TestFixtures.CodeFullySeamed);
-        result.RawDependencyScore.Should().Be(0,
+        result.RawCouplingScore.Should().Be(0,
             "All dependencies are injected via interfaces — perfect seaming");
     }
 
@@ -392,7 +392,7 @@ public class DependencyAnalyzerTests
     public void AnalyzeFile_MaximallyEntangled_ScoresHigh()
     {
         var result = DependencyAnalyzer.AnalyzeFile(TestFixtures.CodeMaximallyEntangled);
-        result.RawDependencyScore.Should().BeGreaterThan(5.0,
+        result.RawCouplingScore.Should().BeGreaterThan(5.0,
             "Multiple infraCalls, instantiations, concrete params, and static calls");
     }
 
@@ -416,8 +416,8 @@ public class DependencyAnalyzerTests
         var entangled = result.Files["proj/Entangled.cs"];
         var seamed = result.Files["proj/Seamed.cs"];
 
-        entangled.DependencyNorm.Should().Be(1.0, "highest raw score normalizes to 1.0");
-        seamed.DependencyNorm.Should().Be(0.0, "zero raw score normalizes to 0.0");
+        entangled.CouplingNorm.Should().Be(1.0, "highest raw score normalizes to 1.0");
+        seamed.CouplingNorm.Should().Be(0.0, "zero raw score normalizes to 0.0");
     }
 
     [Fact]
@@ -432,7 +432,7 @@ public class DependencyAnalyzerTests
         var analyzer = new DependencyAnalyzer(fs);
         var result = analyzer.Analyze("/repo", ["proj"], []);
 
-        result.Files.Values.Should().AllSatisfy(f => f.DependencyNorm.Should().Be(0.0));
+        result.Files.Values.Should().AllSatisfy(f => f.CouplingNorm.Should().Be(0.0));
     }
 
     [Fact]
@@ -605,7 +605,7 @@ public class DependencyAnalyzerTests
 
         var file = result.Files.Values.Single();
         file.IsRegistrationFile.Should().BeTrue();
-        file.RawDependencyScore.Should().Be(0);
-        file.DependencyNorm.Should().Be(0);
+        file.RawCouplingScore.Should().Be(0);
+        file.CouplingNorm.Should().Be(0);
     }
 }

@@ -82,6 +82,16 @@ public class AnalyzeCommand
             Description = "Expand top-ranked files with per-method coverage and complexity"
         };
 
+        var explainOption = new Option<bool>("--explain")
+        {
+            Description = "Show a plain-English explanation of each file's risk and priority drivers"
+        };
+
+        var noGroupOption = new Option<bool>("--no-group")
+        {
+            Description = "Show a flat table instead of grouping by priority level"
+        };
+
         var command = new Command("analyze", "Analyze .NET solution for high-risk files and starting priority")
         {
             solutionOption,
@@ -96,7 +106,9 @@ public class AnalyzeCommand
             verboseOption,
             quietOption,
             failOnThresholdOption,
-            detailedOption
+            detailedOption,
+            explainOption,
+            noGroupOption
         };
 
         command.SetAction(parseResult =>
@@ -124,6 +136,8 @@ public class AnalyzeCommand
                 Verbose = parseResult.GetValue(verboseOption),
                 Quiet = parseResult.GetValue(quietOption),
                 Detailed = parseResult.GetValue(detailedOption),
+                Explain = parseResult.GetValue(explainOption),
+                NoGroup = parseResult.GetValue(noGroupOption),
                 FailOnThreshold = parseResult.GetValue(failOnThresholdOption)
             };
 
@@ -275,7 +289,7 @@ public class AnalyzeCommand
                     {
                         var churnProgress = ctx.AddTask("Git churn", maxValue: 1);
                         var complexityProgress = ctx.AddTask("Complexity analysis", maxValue: totalFiles);
-                        var dependencyProgress = ctx.AddTask("Dependency analysis", maxValue: totalFiles);
+                        var dependencyProgress = ctx.AddTask("Coupling analysis", maxValue: totalFiles);
 
                         var ct = Task.Run(() =>
                         {
@@ -436,7 +450,8 @@ public class AnalyzeCommand
             var renderer = new ReportRenderer(fileSystem);
             var totalSkippedFiles = complexityResult.SkippedFiles + dependencyResult.SkippedFiles;
             renderer.Render(reports, options.Top, options.NoColor, options.OutputPath, totalSkippedFiles, baseline,
-                options.Format, options.Verbose, options.Quiet, options.Since, methodDetails);
+                options.Format, options.Verbose, options.Quiet, options.Since, methodDetails,
+                options.Explain, options.NoGroup);
 
             if (!options.Quiet && options.NoCoverage)
             {

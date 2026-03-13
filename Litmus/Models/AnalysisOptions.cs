@@ -15,6 +15,8 @@ public class AnalysisOptions
     public bool Quiet { get; set; }
     public bool NoCoverage { get; set; }
     public bool Detailed { get; set; }
+    public bool Explain { get; set; }
+    public bool NoGroup { get; set; }
     public double? FailOnThreshold { get; set; }
 
     public static readonly string[] DefaultExclusions =

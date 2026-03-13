@@ -1,3 +1,5 @@
+using Litmus.Services;
+
 namespace Litmus.Models;
 
 public class FileRiskReport
@@ -21,9 +23,10 @@ public class FileRiskReport
     public int AsyncSeamCalls { get; set; }
     public int ConcreteCasts { get; set; }
     public bool IsRegistrationFile { get; set; }
-    public double RawDependencyScore { get; set; }
-    public double DependencyNorm { get; set; }
-    public string DependencyLevel { get; set; } = "Low";  // Low | Medium | High | Very High
+    public double RawCouplingScore { get; set; }
+    public double CouplingNorm { get; set; }
+    public string CouplingLevel { get; set; } = "Low";  // Low | Medium | High | Very High
     public double StartingPriority { get; set; }
     public string PriorityLevel { get; set; } = "Low";    // Low | Medium | High
+    public ComplexityBreakdown? ComplexityBreakdown { get; set; }
 }

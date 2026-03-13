@@ -39,13 +39,23 @@ dotnet-litmus scan --no-coverage
 ## Understanding the Output
 
 ```
-Rank  File                           Commits  Coverage  Complexity  Dependency  Risk  Priority  Level
-1     Services/OrderService.cs       47       12%       94          Low         1.42  1.42      High
-2     Services/ReportFormatter.cs    22       31%       67          Low         0.71  0.71      High
-3     Controllers/PaymentGateway.cs  31       8%        118         Very High   1.61  0.32      Medium
-4     Data/LegacyDbSync.cs           41       0%        201         Very High   1.89  0.19      Low
+── Act Now ──────────────────────────────────────────────────────────────────────
+Rank  File                           Commits  Coverage  Complexity  Coupling  Risk    Priority
+1     Services/OrderService.cs       47       12%       94          Low       High    High
+2     Services/ReportFormatter.cs    22       31%       67          Low       High    High
+
+── Next Sprint ──────────────────────────────────────────────────────────────────
+3     Controllers/PaymentGateway.cs  31       8%        118         Very High High    Medium
+
+── Monitor ──────────────────────────────────────────────────────────────────────
+4     Data/LegacyDbSync.cs           41       0%        201         Very High High    Low
 
 4 files analyzed. 2 high-priority (start today), 1 medium-priority (next sprint). 2 high-risk file(s) need seam introduction before testing.
+
+Complexity: sum of conditionals, loops, catches, switch cases, logical ops (&&/||/??) per file
+Risk:       churn x coverage gaps x complexity — Low | Medium | High
+Priority:   risk adjusted for coupling — Low | Medium | High
+Coupling:   how tightly bound to concrete dependencies — Low | Medium | High | Very High
 ```
 
 ### Reading the table
@@ -55,12 +65,13 @@ Rank  File                           Commits  Coverage  Complexity  Dependency  
 | **Commits** | Number of git commits touching this file in the analysis window |
 | **Coverage** | Line coverage from the Cobertura report |
 | **Complexity** | Cyclomatic complexity (sum across all methods) |
-| **Dependency** | Cost of adding test seams: `Low`, `Medium`, `High`, `Very High` |
-| **Risk** | How dangerous it is to leave untested (0-2.0) |
-| **Priority** | Where to start testing today (0-2.0) |
-| **Level** | Actionable tier based on Starting Priority |
+| **Coupling** | Cost of adding test seams: `Low`, `Medium`, `High`, `Very High` |
+| **Risk** | How dangerous it is to leave untested: `Low`, `Medium`, `High` |
+| **Priority** | Where to start testing today: `Low`, `Medium`, `High` |
 
-`PaymentGateway.cs` has a *higher* Risk (1.61) than `OrderService.cs` (1.42), but its `Very High` dependency level pushes its Starting Priority down to 0.32 (Medium). The tool is telling you: *"This file is dangerous, but introduce seams before attempting to test it."*
+By default, output is **grouped by priority level**: *Act Now* (High), *Next Sprint* (Medium), *Monitor* (Low). Use `--no-group` for a flat table sorted by priority score.
+
+`PaymentGateway.cs` has a *higher* Risk than `OrderService.cs`, but its `Very High` coupling level pushes its Priority down to Medium. The tool is telling you: *"This file is dangerous, but introduce seams before attempting to test it."*
 
 ### Row colors
 
@@ -89,11 +100,11 @@ dotnet-litmus scan --detailed
 ```
 
 ```
-Rank  File                       Commits  Coverage  Complexity  Dependency  Risk  Priority  Level
-1     Services/OrderService.cs   47       12%       94          Low         1.42  1.42      High
+Rank  File                       Commits  Coverage  Complexity  Coupling  Risk  Priority
+1     Services/OrderService.cs   47       12%       94          Low       High  High
         ProcessOrder             —        50%       25
         ValidateInput            —        0%        18
-2     Services/ReportFormatter.cs 22      31%       67          Low         0.71  0.71      High
+2     Services/ReportFormatter.cs 22      31%       67          Low       High  High
         FormatReport             —        10%       30
         BuildHeader              —        80%       8
 ```
@@ -160,6 +171,8 @@ Use `analyze` when you already have a Cobertura XML coverage report (e.g., from 
 | `--quiet` | false | Suppress all output except errors |
 | `--fail-on-threshold` | -- | Exit with code 1 if any file's Risk Score or Starting Priority exceeds this value (0.0-2.0) |
 | `--detailed` | false | Expand top-ranked files with per-method coverage and complexity |
+| `--explain` | false | Show plain-English annotations explaining risk/priority drivers per file |
+| `--no-group` | false | Show flat table instead of grouped by priority level |
 | `--no-color` | false | Disable colored output |
 
 ### `scan`-only options
@@ -360,7 +373,7 @@ Litmus cross-references four signals to produce its scores:
 | **Git churn** | How frequently a file changes |
 | **Code coverage** | How well a file is tested |
 | **Cyclomatic complexity** | How complex the file's logic is |
-| **Dependency entanglement** | How many unseamed dependencies block testability |
+| **Coupling** | How many unseamed dependencies block testability |
 
 A "seam" (from Michael Feathers' *Working Effectively with Legacy Code*) is a place where you can substitute a dependency without changing production code — typically via dependency injection or an interface. An "unseamed" dependency is one a test cannot replace, like a direct `new HttpClient()` or `DateTime.Now` call.
 
@@ -378,7 +391,7 @@ Each factor is normalized to [0, 1]. Range: 0 to 2.0. A file that changes consta
 <details>
 <summary>Phase 2 — Starting Priority</summary>
 
-The dependency score measures **unseamed dependencies** — things a test cannot substitute. Six signals are detected via Roslyn:
+The coupling score measures **unseamed dependencies** — things a test cannot substitute. Six signals are detected via Roslyn:
 
 | Signal | Weight | What it detects |
 |---|---|---|
@@ -389,14 +402,14 @@ The dependency score measures **unseamed dependencies** — things a test cannot
 | Async seam calls | 1.5 | `await _httpClient.GetAsync()`, `await _db.SaveChangesAsync()` |
 | Concrete downcasts | 1.0 | `(ConcreteType)expr` and `expr as ConcreteType` |
 
-DI registration files (`Program.cs`, `Startup.cs`, files with `AddScoped`/`AddSingleton`/`AddTransient`) get a zeroed dependency score.
+DI registration files (`Program.cs`, `Startup.cs`, files with `AddScoped`/`AddSingleton`/`AddTransient`) get a zeroed coupling score.
 
 ```
-StartingPriority = RiskScore x (1 - DependencyNorm)
+StartingPriority = RiskScore x (1 - CouplingNorm)
 ```
 
-Fully seamed (`DependencyNorm = 0`) -> Priority equals Risk.
-Maximally entangled (`DependencyNorm = 1`) -> Priority drops to 0.
+Fully seamed (`CouplingNorm = 0`) -> Priority equals Risk.
+Maximally entangled (`CouplingNorm = 1`) -> Priority drops to 0.
 
 </details>
 

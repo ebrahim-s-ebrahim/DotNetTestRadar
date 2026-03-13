@@ -25,7 +25,7 @@ Litmus.slnx
 │   │   ├── GitChurnAnalyzer.cs        # Git log --numstat analysis
 │   │   ├── CoverageParser.cs          # Cobertura XML parsing
 │   │   ├── ComplexityAnalyzer.cs      # Roslyn-based cyclomatic complexity
-│   │   ├── DependencyAnalyzer.cs     # Roslyn-based seam detection (Phase 2)
+│   │   ├── DependencyAnalyzer.cs     # Roslyn-based coupling/seam detection (Phase 2)
 │   │   ├── FileFilterHelper.cs       # Glob pattern matching
 │   │   └── RiskScorer.cs              # Final risk + priority formula
 │   └── Program.cs                     # Entry point
@@ -354,7 +354,7 @@ This differs from the pre-release API (`AddOption`, `SetHandler` with delegates,
 
 ## Test Coverage
 
-167 tests across 9 test classes:
+258 tests across 9 test classes:
 
 | Test Class | Count | What's Tested |
 |---|---|---|
@@ -362,10 +362,10 @@ This differs from the pre-release API (`AddOption`, `SetHandler` with delegates,
 | `GitChurnAnalyzerTests` | 10 | Numstat parsing, noise floor, normalization, exclusion globs, binary files, path handling |
 | `CoverageParserTests` | 12 | Cobertura XML parsing, suffix matching, separator handling, malformed XML, multi-file merge |
 | `ComplexityAnalyzerTests` | 8 | All branch types, multi-method, normalization, skipped files, project scoping, progress callback |
-| `DependencyAnalyzerTests` | 39 | 6-signal detection (infra, new, ctor params, static, async seam, casts), DI registration, normalization |
+| `DependencyAnalyzerTests` | 39 | 6-signal coupling detection (infra, new, ctor params, static, async seam, casts), DI registration, normalization |
 | `FileFilterHelperTests` | 9 | Glob pattern matching, default exclusions |
 | `RiskScorerTests` | 10 | Zero cases, boundary classification, complexity amplification, score cap |
-| `ReportRendererTests` | 26 | Baseline stats, JSON/CSV/HTML export, --format stdout, --verbose, --quiet |
+| `ReportRendererTests` | 41 | Baseline stats, JSON/CSV/HTML export, --format stdout, --verbose, --quiet, --explain annotations, complexity breakdown, footer legend, grouped/flat output |
 | `AnalyzeCommandIntegrationTests` | 11 | End-to-end pipeline with real git repo, --format json/csv, --baseline, progress |
 
 Unit tests mock `IFileSystem` and `IProcessRunner`, making them fast and deterministic. Integration tests create real temp git repos with `.slnx`, `.cs` files, git history, and Cobertura XML.

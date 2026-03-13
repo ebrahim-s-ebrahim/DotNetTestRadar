@@ -266,4 +266,64 @@ public class ComplexityAnalyzerTests
         result.MethodComplexity["MyApp/Calculator.cs"].Should().ContainSingle()
             .Which.Name.Should().Be("Calculate");
     }
+
+    // ---- ComplexityBreakdown tests ----
+
+    [Fact]
+    public void CalculateFileBreakdown_CountsConstructTypes()
+    {
+        var code = """
+            public class C {
+                public void M() {
+                    if (true) {}
+                    if (false) {}
+                    if (true) {}
+                    foreach (var x in new int[0]) {}
+                    for (int i = 0; i < 10; i++) {}
+                    try {} catch (Exception) {}
+                    switch (1) { case 1: break; case 2: break; }
+                    var a = true && false;
+                    var b = null ?? "x";
+                }
+            }
+            """;
+        var breakdown = ComplexityAnalyzer.CalculateFileBreakdown(code);
+        breakdown.Conditionals.Should().Be(3); // 3 ifs
+        breakdown.Loops.Should().Be(2);         // foreach + for
+        breakdown.Catches.Should().Be(1);
+        breakdown.Switches.Should().Be(2);      // 2 case labels
+        breakdown.LogicalOps.Should().Be(2);    // && + ??
+    }
+
+    [Fact]
+    public void CalculateFileBreakdown_EmptyFile_AllZeroes()
+    {
+        var breakdown = ComplexityAnalyzer.CalculateFileBreakdown("public class Empty {}");
+        breakdown.Conditionals.Should().Be(0);
+        breakdown.Loops.Should().Be(0);
+        breakdown.Catches.Should().Be(0);
+        breakdown.Switches.Should().Be(0);
+        breakdown.LogicalOps.Should().Be(0);
+    }
+
+    [Fact]
+    public void CalculateFileBreakdown_SumsMatchTotalComplexity()
+    {
+        var code = """
+            public class C {
+                public void M() {
+                    if (true) {}
+                    for (int i = 0; i < 10; i++) {}
+                    try {} catch (Exception) {}
+                    var x = true && false;
+                }
+            }
+            """;
+        var total = ComplexityAnalyzer.CalculateFileComplexity(code);
+        var breakdown = ComplexityAnalyzer.CalculateFileBreakdown(code);
+        var breakdownSum = breakdown.Conditionals + breakdown.Loops +
+                           breakdown.Catches + breakdown.Switches + breakdown.LogicalOps;
+        // Total includes base-1 per method, breakdown does not
+        breakdownSum.Should().Be(total - 1); // 1 method = 1 base
+    }
 }

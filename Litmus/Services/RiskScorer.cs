@@ -54,12 +54,12 @@ public class RiskScorer
                 _ => "Low"
             };
 
-            // Phase 2: Dependency score and starting priority
+            // Phase 2: Coupling score and starting priority
             var depData = dependency.Files.GetValueOrDefault(gitRootRelPath);
-            var dependencyNorm = depData?.DependencyNorm ?? 0.0;
+            var couplingNorm = depData?.CouplingNorm ?? 0.0;
 
-            var startingPriority = Math.Round(riskScore * (1 - dependencyNorm), 4);
-            var dependencyLevel = dependencyNorm switch
+            var startingPriority = Math.Round(riskScore * (1 - couplingNorm), 4);
+            var couplingLevel = couplingNorm switch
             {
                 >= 0.75 => "Very High",
                 >= 0.50 => "High",
@@ -91,11 +91,12 @@ public class RiskScorer
                 AsyncSeamCalls = depData?.AsyncSeamCalls ?? 0,
                 ConcreteCasts = depData?.ConcreteCasts ?? 0,
                 IsRegistrationFile = depData?.IsRegistrationFile ?? false,
-                RawDependencyScore = depData?.RawDependencyScore ?? 0.0,
-                DependencyNorm = dependencyNorm,
-                DependencyLevel = dependencyLevel,
+                RawCouplingScore = depData?.RawCouplingScore ?? 0.0,
+                CouplingNorm = couplingNorm,
+                CouplingLevel = couplingLevel,
                 StartingPriority = startingPriority,
-                PriorityLevel = priorityLevel
+                PriorityLevel = priorityLevel,
+                ComplexityBreakdown = complexity.FileComplexityBreakdown.GetValueOrDefault(gitRootRelPath)
             });
         }
 

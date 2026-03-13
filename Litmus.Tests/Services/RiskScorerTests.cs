@@ -51,8 +51,8 @@ public class RiskScorerTests
             {
                 [gitRootRelFile] = new FileDependencyData
                 {
-                    RawDependencyScore = rawScore,
-                    DependencyNorm = norm
+                    RawCouplingScore = rawScore,
+                    CouplingNorm = norm
                 }
             }
         };
@@ -154,7 +154,7 @@ public class RiskScorerTests
 
         var file = reports.First(r => r.File == "File.cs");
         file.StartingPriority.Should().Be(file.RiskScore,
-            "when DependencyNorm = 0, StartingPriority = RiskScore × (1 - 0) = RiskScore");
+            "when CouplingNorm = 0, StartingPriority = RiskScore × (1 - 0) = RiskScore");
     }
 
     [Fact]
@@ -169,13 +169,13 @@ public class RiskScorerTests
 
         var file = reports.First(r => r.File == "File.cs");
         file.StartingPriority.Should().Be(0,
-            "when DependencyNorm = 1, StartingPriority = RiskScore × (1 - 1) = 0");
+            "when CouplingNorm = 1, StartingPriority = RiskScore × (1 - 1) = 0");
     }
 
     [Fact]
     public void Score_PartialDependency_StartingPriorityDiscountedCorrectly()
     {
-        // RiskScore = 1.0 × 1.0 × 1.0 = 1.0, DependencyNorm = 0.6 → SP = 0.4
+        // RiskScore = 1.0 × 1.0 × 1.0 = 1.0, CouplingNorm = 0.6 → SP = 0.4
         var churn = MakeChurn("File.cs", 100, 1.0);
         var coverage = MakeCoverage("File.cs", 0.0);
         var complexity = MakeComplexity("File.cs", 10, 0.0);
@@ -214,7 +214,7 @@ public class RiskScorerTests
     [InlineData(0.74, "High")]
     [InlineData(0.75, "Very High")]
     [InlineData(1.0, "Very High")]
-    public void Score_DependencyLevelClassifiesCorrectly(double depNorm, string expectedDepLevel)
+    public void Score_CouplingLevelClassifiesCorrectly(double depNorm, string expectedDepLevel)
     {
         var churn = MakeChurn("File.cs", 100, 1.0);
         var coverage = MakeCoverage("File.cs", 0.0);
@@ -224,7 +224,7 @@ public class RiskScorerTests
         var reports = _sut.Score(churn, coverage, complexity, dependency, "/repo", "/repo");
 
         var file = reports.First(r => r.File == "File.cs");
-        file.DependencyLevel.Should().Be(expectedDepLevel);
+        file.CouplingLevel.Should().Be(expectedDepLevel);
     }
 
     [Fact]
@@ -257,8 +257,8 @@ public class RiskScorerTests
         {
             Files = new Dictionary<string, FileDependencyData>
             {
-                ["FileA.cs"] = new FileDependencyData { DependencyNorm = 0.0 },   // fully seamed
-                ["FileB.cs"] = new FileDependencyData { DependencyNorm = 1.0 }    // maximally entangled
+                ["FileA.cs"] = new FileDependencyData { CouplingNorm = 0.0 },   // fully seamed
+                ["FileB.cs"] = new FileDependencyData { CouplingNorm = 1.0 }    // maximally entangled
             }
         };
 

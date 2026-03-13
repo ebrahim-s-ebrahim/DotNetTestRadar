@@ -2,6 +2,7 @@ using System.Text.Json;
 using Litmus.Abstractions;
 using Litmus.Models;
 using Litmus.Output;
+using Litmus.Services;
 using FluentAssertions;
 using NSubstitute;
 using Spectre.Console;
@@ -267,7 +268,7 @@ public class ReportRendererTests
     }
 
     [Fact]
-    public void ExportJson_IncludesNewDependencyFields()
+    public void ExportJson_IncludesNewCouplingFields()
     {
         var reports = new List<FileRiskReport> { MakeReport("A.cs", 0.5) };
 
@@ -279,7 +280,7 @@ public class ReportRendererTests
     }
 
     [Fact]
-    public void ExportCsv_IncludesNewDependencyColumns()
+    public void ExportCsv_IncludesNewCouplingColumns()
     {
         var reports = new List<FileRiskReport> { MakeReport("A.cs", 0.5) };
 
@@ -478,7 +479,7 @@ public class ReportRendererTests
                 PriorityLevel = "High",
                 RiskScore = 0.7,
                 RiskLevel = "High",
-                DependencyLevel = "Low"
+                CouplingLevel = "Low"
             }
         };
 
@@ -519,7 +520,7 @@ public class ReportRendererTests
                 PriorityLevel = "High",
                 RiskScore = 0.7,
                 RiskLevel = "High",
-                DependencyLevel = "Low"
+                CouplingLevel = "Low"
             }
         };
 
@@ -532,6 +533,274 @@ public class ReportRendererTests
         output.Should().Contain("OrderService.cs");
         output.Should().NotContain("ProcessOrder");
     }
+
+    // ---- Phase 3: BuildExplanation tests ----
+
+    [Fact]
+    public void BuildExplanation_HighChurnLowCoverage()
+    {
+        var r = new FileRiskReport
+        {
+            File = "A.cs", ChurnNorm = 0.8, CoverageRate = 0.1, ComplexityNorm = 0.1,
+            CouplingLevel = "Low", RiskLevel = "High", PriorityLevel = "High"
+        };
+        var explanation = ReportRenderer.BuildExplanation(r);
+        explanation.Should().Contain("high churn");
+        explanation.Should().Contain("low coverage");
+    }
+
+    [Fact]
+    public void BuildExplanation_HighComplexityWithBreakdown()
+    {
+        var r = new FileRiskReport
+        {
+            File = "A.cs", ChurnNorm = 0.1, CoverageRate = 0.8, ComplexityNorm = 0.7,
+            CouplingLevel = "Low", RiskLevel = "Low", PriorityLevel = "Low",
+            ComplexityBreakdown = new ComplexityBreakdown { Conditionals = 20, Loops = 10 }
+        };
+        var explanation = ReportRenderer.BuildExplanation(r);
+        explanation.Should().Contain("high complexity");
+        explanation.Should().Contain("20 conditionals");
+        explanation.Should().Contain("10 loops");
+    }
+
+    [Fact]
+    public void BuildExplanation_HighCouplingReducesPriority()
+    {
+        var r = new FileRiskReport
+        {
+            File = "A.cs", ChurnNorm = 0.8, CoverageRate = 0.1, ComplexityNorm = 0.5,
+            CouplingLevel = "Very High", RiskLevel = "High", PriorityLevel = "Low"
+        };
+        var explanation = ReportRenderer.BuildExplanation(r);
+        explanation.Should().Contain("introduce seams");
+    }
+
+    [Fact]
+    public void BuildExplanation_AllLow_MinimalExplanation()
+    {
+        var r = new FileRiskReport
+        {
+            File = "A.cs", ChurnNorm = 0.05, CoverageRate = 0.9, ComplexityNorm = 0.05,
+            CouplingLevel = "Low", RiskLevel = "Low", PriorityLevel = "Low"
+        };
+        var explanation = ReportRenderer.BuildExplanation(r);
+        explanation.Should().Be("low risk across all signals");
+    }
+
+    [Fact]
+    public void BuildExplanation_ZeroCoverage_MentionsNoCoverage()
+    {
+        var r = new FileRiskReport
+        {
+            File = "A.cs", ChurnNorm = 0.5, CoverageRate = 0.0, ComplexityNorm = 0.1,
+            CouplingLevel = "Low", RiskLevel = "Medium", PriorityLevel = "Medium",
+            IsRegistrationFile = false
+        };
+        var explanation = ReportRenderer.BuildExplanation(r);
+        explanation.Should().Contain("no test coverage");
+    }
+
+    [Fact]
+    public void BuildExplanation_BreakdownOmitsZeroCounts()
+    {
+        var r = new FileRiskReport
+        {
+            File = "A.cs", ChurnNorm = 0.1, CoverageRate = 0.8, ComplexityNorm = 0.7,
+            CouplingLevel = "Low", RiskLevel = "Low", PriorityLevel = "Low",
+            ComplexityBreakdown = new ComplexityBreakdown { Conditionals = 5, Loops = 0, Catches = 0 }
+        };
+        var explanation = ReportRenderer.BuildExplanation(r);
+        explanation.Should().Contain("5 conditionals");
+        explanation.Should().NotContain("loops");
+        explanation.Should().NotContain("catches");
+    }
+
+    [Fact]
+    public void Render_Explain_ShowsAnnotationRows()
+    {
+        var reports = new List<FileRiskReport>
+        {
+            new()
+            {
+                File = "A.cs", Commits = 10, CoverageRate = 0.1, CyclomaticComplexity = 20,
+                ChurnNorm = 0.8, ComplexityNorm = 0.5,
+                StartingPriority = 0.8, PriorityLevel = "High",
+                RiskScore = 0.7, RiskLevel = "High", CouplingLevel = "Low"
+            }
+        };
+
+        var output = CaptureAnsiConsole(() =>
+        {
+            var renderer = new ReportRenderer(Substitute.For<IFileSystem>());
+            renderer.Render(reports, 20, noColor: true, outputPath: null, skippedFiles: 0, explain: true);
+        });
+
+        output.Should().Contain("high churn");
+        output.Should().Contain("low coverage");
+    }
+
+    [Fact]
+    public void Render_Explain_DoesNotAffectJsonOutput()
+    {
+        var reports = new List<FileRiskReport> { MakeReport("A.cs", 0.5) };
+
+        var renderer = new ReportRenderer(Substitute.For<IFileSystem>());
+        var captured = CaptureConsoleOut(() =>
+            renderer.Render(reports, 20, noColor: true, outputPath: null, skippedFiles: 0,
+                format: "json", explain: true));
+
+        captured.Should().NotContain("->");
+        var parsed = JsonSerializer.Deserialize<List<JsonElement>>(captured);
+        parsed.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void Render_FooterLegend_RendersInDefaultMode()
+    {
+        var reports = new List<FileRiskReport> { MakeReport("A.cs", 0.5) };
+
+        var output = CaptureAnsiConsole(() =>
+        {
+            var renderer = new ReportRenderer(Substitute.For<IFileSystem>());
+            renderer.Render(reports, 20, noColor: true, outputPath: null, skippedFiles: 0);
+        });
+
+        output.Should().Contain("Complexity:");
+        output.Should().Contain("Risk:");
+        output.Should().Contain("Priority:");
+        output.Should().Contain("Coupling:");
+    }
+
+    [Fact]
+    public void Render_FooterLegend_SuppressedByQuiet()
+    {
+        var reports = new List<FileRiskReport> { MakeReport("A.cs", 0.5) };
+
+        var output = CaptureAnsiConsole(() =>
+        {
+            var renderer = new ReportRenderer(Substitute.For<IFileSystem>());
+            renderer.Render(reports, 20, noColor: true, outputPath: null, skippedFiles: 0, quiet: true);
+        });
+
+        output.Should().NotContain("Complexity:");
+    }
+
+    // ---- End Phase 3 tests ----
+
+    // ---- Phase 4 tests: Group by priority level ----
+
+    [Fact]
+    public void Render_DefaultMode_GroupsByPriorityLevel()
+    {
+        var reports = new List<FileRiskReport>
+        {
+            new() { File = "High.cs", StartingPriority = 0.9, PriorityLevel = "High", RiskLevel = "High", CouplingLevel = "Low" },
+            new() { File = "Low.cs", StartingPriority = 0.1, PriorityLevel = "Low", RiskLevel = "Low", CouplingLevel = "Low" },
+            new() { File = "Med.cs", StartingPriority = 0.4, PriorityLevel = "Medium", RiskLevel = "Medium", CouplingLevel = "Low" }
+        };
+
+        var output = CaptureAnsiConsole(() =>
+        {
+            var renderer = new ReportRenderer(Substitute.For<IFileSystem>());
+            renderer.Render(reports, 20, noColor: true, outputPath: null, skippedFiles: 0);
+        });
+
+        output.Should().Contain("Act Now");
+        output.Should().Contain("Next Sprint");
+        output.Should().Contain("Monitor");
+
+        // Verify ordering: Act Now before Next Sprint before Monitor
+        var actNowIdx = output.IndexOf("Act Now");
+        var nextSprintIdx = output.IndexOf("Next Sprint");
+        var monitorIdx = output.IndexOf("Monitor");
+        actNowIdx.Should().BeLessThan(nextSprintIdx);
+        nextSprintIdx.Should().BeLessThan(monitorIdx);
+    }
+
+    [Fact]
+    public void Render_DefaultMode_SkipsEmptyGroups()
+    {
+        var reports = new List<FileRiskReport>
+        {
+            new() { File = "High.cs", StartingPriority = 0.9, PriorityLevel = "High", RiskLevel = "High", CouplingLevel = "Low" }
+        };
+
+        var output = CaptureAnsiConsole(() =>
+        {
+            var renderer = new ReportRenderer(Substitute.For<IFileSystem>());
+            renderer.Render(reports, 20, noColor: true, outputPath: null, skippedFiles: 0);
+        });
+
+        output.Should().Contain("Act Now");
+        output.Should().NotContain("Next Sprint");
+        output.Should().NotContain("Monitor");
+    }
+
+    [Fact]
+    public void Render_NoGroup_ProducesFlatTable()
+    {
+        var reports = new List<FileRiskReport>
+        {
+            new() { File = "High.cs", StartingPriority = 0.9, PriorityLevel = "High", RiskLevel = "High", CouplingLevel = "Low" },
+            new() { File = "Med.cs", StartingPriority = 0.4, PriorityLevel = "Medium", RiskLevel = "Medium", CouplingLevel = "Low" }
+        };
+
+        var output = CaptureAnsiConsole(() =>
+        {
+            var renderer = new ReportRenderer(Substitute.For<IFileSystem>());
+            renderer.Render(reports, 20, noColor: true, outputPath: null, skippedFiles: 0, noGroup: true);
+        });
+
+        output.Should().NotContain("Act Now");
+        output.Should().NotContain("Next Sprint");
+        output.Should().NotContain("Monitor");
+        output.Should().Contain("High.cs");
+        output.Should().Contain("Med.cs");
+    }
+
+    [Fact]
+    public void Render_DefaultMode_RankIsContinuousAcrossGroups()
+    {
+        var reports = new List<FileRiskReport>
+        {
+            new() { File = "H1.cs", StartingPriority = 0.9, PriorityLevel = "High", RiskLevel = "High", CouplingLevel = "Low" },
+            new() { File = "H2.cs", StartingPriority = 0.8, PriorityLevel = "High", RiskLevel = "High", CouplingLevel = "Low" },
+            new() { File = "M1.cs", StartingPriority = 0.4, PriorityLevel = "Medium", RiskLevel = "Medium", CouplingLevel = "Low" }
+        };
+
+        var output = CaptureAnsiConsole(() =>
+        {
+            var renderer = new ReportRenderer(Substitute.For<IFileSystem>());
+            renderer.Render(reports, 20, noColor: true, outputPath: null, skippedFiles: 0);
+        });
+
+        // H1 = rank 1, H2 = rank 2, M1 = rank 3 (continuous across groups)
+        output.Should().Contain("H1.cs");
+        output.Should().Contain("H2.cs");
+        output.Should().Contain("M1.cs");
+    }
+
+    [Fact]
+    public void Render_GroupMode_DoesNotAffectJsonOutput()
+    {
+        var reports = new List<FileRiskReport>
+        {
+            MakeReport("A.cs", 0.9),
+            MakeReport("B.cs", 0.1)
+        };
+
+        var renderer = new ReportRenderer(Substitute.For<IFileSystem>());
+        var captured = CaptureConsoleOut(() =>
+            renderer.Render(reports, 20, noColor: true, outputPath: null, skippedFiles: 0,
+                format: "json", noGroup: false));
+
+        captured.Should().NotContain("Act Now");
+        var parsed = JsonSerializer.Deserialize<List<JsonElement>>(captured);
+        parsed.Should().HaveCount(2);
+    }
+
+    // ---- End Phase 4 tests ----
 
     private static string CaptureAnsiConsole(Action action, int width = 200)
     {

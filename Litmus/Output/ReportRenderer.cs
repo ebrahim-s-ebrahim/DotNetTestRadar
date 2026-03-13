@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Litmus.Abstractions;
 using Litmus.Models;
+using Litmus.Services;
 using Spectre.Console;
 using System.Collections.Generic;
 
@@ -20,7 +21,8 @@ public class ReportRenderer
     public void Render(List<FileRiskReport> reports, int top, bool noColor, string? outputPath, int skippedFiles,
         Dictionary<string, double>? baseline = null, string format = "table",
         bool verbose = false, bool quiet = false, DateTime? sinceDate = null,
-        Dictionary<string, List<MethodDetail>>? methodDetails = null)
+        Dictionary<string, List<MethodDetail>>? methodDetails = null,
+        bool explain = false, bool noGroup = false)
     {
         // Structured stdout formats: write JSON, CSV, or HTML to Console.Out and skip the table
         if (format is "json" or "csv" or "html")
@@ -52,105 +54,43 @@ public class ReportRenderer
         var topReports = reports.Take(top).ToList();
         var hasBaseline = baseline != null;
 
-        var table = new Table();
-        table.Border(TableBorder.Rounded);
-        table.AddColumn("Rank");
-        table.AddColumn("File");
-        table.AddColumn("Commits");
-        table.AddColumn("Coverage");
-        table.AddColumn("Complexity");
-        table.AddColumn("Dependency");
-        table.AddColumn("Risk");
-        table.AddColumn("Priority");
-        if (hasBaseline)
-            table.AddColumn("Delta");
-        table.AddColumn("Level");
-
-        for (var i = 0; i < topReports.Count; i++)
+        if (noGroup)
         {
-            var r = topReports[i];
-            var coverageStr = $"{r.CoverageRate * 100:F0}%";
-            var riskStr = $"{r.RiskScore:F2}";
-            var priorityStr = $"{r.StartingPriority:F2}";
-
-            // Row color is driven by PriorityLevel — the actionable starting point
-            var rowStyle = r.PriorityLevel switch
+            // Flat table (--no-group)
+            var table = CreateTable(hasBaseline);
+            for (var i = 0; i < topReports.Count; i++)
+                AddFileRow(table, topReports[i], i + 1, noColor, hasBaseline, baseline, methodDetails, explain);
+            AnsiConsole.Write(table);
+        }
+        else
+        {
+            // Grouped by priority level (default)
+            var groups = new (string label, string level)[]
             {
-                "High" when !noColor => "red",
-                "Medium" when !noColor => "yellow",
-                _ => "default"
+                ("Act Now", "High"),
+                ("Next Sprint", "Medium"),
+                ("Monitor", "Low")
             };
 
-            // Risk column gets independent coloring to highlight dangerous-but-entangled files
-            var riskStyle = r.RiskLevel switch
+            var rank = 0;
+            foreach (var (label, level) in groups)
             {
-                "High" when !noColor => "red",
-                "Medium" when !noColor => "yellow",
-                _ => rowStyle
-            };
+                var groupReports = topReports.Where(r => r.PriorityLevel == level).ToList();
+                if (groupReports.Count == 0) continue;
 
-            // Dependency level styled to indicate cost of introducing seams
-            var depStyle = r.DependencyLevel switch
-            {
-                "Very High" when !noColor => "red",
-                "High" when !noColor => "yellow",
-                _ => rowStyle
-            };
+                AnsiConsole.Write(new Rule($"[bold]{label}[/]").LeftJustified());
 
-            var columns = new List<Markup>
-            {
-                new($"[{rowStyle}]{i + 1}[/]"),
-                new($"[{rowStyle}]{r.File.EscapeMarkup()}[/]"),
-                new($"[{rowStyle}]{r.Commits}[/]"),
-                new($"[{rowStyle}]{coverageStr}[/]"),
-                new($"[{rowStyle}]{r.CyclomaticComplexity}[/]"),
-                new($"[{depStyle}]{r.DependencyLevel}[/]"),
-                new($"[{riskStyle}]{riskStr}[/]"),
-                new($"[{rowStyle}]{priorityStr}[/]")
-            };
-
-            if (hasBaseline)
-            {
-                var deltaMarkup = FormatDelta(r.File, r.StartingPriority, baseline!, noColor);
-                columns.Add(deltaMarkup);
-            }
-
-            columns.Add(new Markup($"[{rowStyle}]{r.PriorityLevel}[/]"));
-
-            table.AddRow(columns);
-
-            // Method-level detail rows (--detailed)
-            if (methodDetails != null && methodDetails.TryGetValue(r.File, out var methods))
-            {
-                foreach (var method in methods)
+                var table = CreateTable(hasBaseline);
+                foreach (var r in groupReports)
                 {
-                    var methodCoverage = method.CoverageRate.HasValue
-                        ? $"{method.CoverageRate.Value * 100:F0}%"
-                        : "\u2014";
-
-                    var methodColumns = new List<Markup>
-                    {
-                        new(""),
-                        new($"[dim]  {method.Name.EscapeMarkup()}[/]"),
-                        new($"[dim]\u2014[/]"),
-                        new($"[dim]{methodCoverage}[/]"),
-                        new($"[dim]{method.Complexity}[/]"),
-                        new(""),
-                        new(""),
-                        new("")
-                    };
-
-                    if (hasBaseline)
-                        methodColumns.Add(new Markup(""));
-
-                    methodColumns.Add(new Markup(""));
-
-                    table.AddRow(methodColumns);
+                    rank++;
+                    AddFileRow(table, r, rank, noColor, hasBaseline, baseline, methodDetails, explain);
                 }
+
+                AnsiConsole.Write(table);
+                AnsiConsole.WriteLine();
             }
         }
-
-        AnsiConsole.Write(table);
 
         var highPriorityCount = reports.Count(r => r.PriorityLevel == "High");
         var mediumPriorityCount = reports.Count(r => r.PriorityLevel == "Medium");
@@ -172,6 +112,13 @@ public class ReportRenderer
             RenderBaselineSummary(reports, baseline!);
         }
 
+        // Footer legend
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[dim]Complexity: sum of conditionals, loops, catches, switch cases, logical ops (&&/||/??) per file[/]");
+        AnsiConsole.MarkupLine("[dim]Risk:       churn x coverage gaps x complexity \u2014 Low | Medium | High[/]");
+        AnsiConsole.MarkupLine("[dim]Priority:   risk adjusted for coupling \u2014 Low | Medium | High[/]");
+        AnsiConsole.MarkupLine("[dim]Coupling:   how tightly bound to concrete dependencies \u2014 Low | Medium | High | Very High[/]");
+
         // Verbose: show detailed intermediate scores
         if (verbose)
         {
@@ -188,9 +135,11 @@ public class ReportRenderer
             detailTable.AddColumn("Static");
             detailTable.AddColumn("Async");
             detailTable.AddColumn("Casts");
-            detailTable.AddColumn("DepScore");
-            detailTable.AddColumn("DepNorm");
+            detailTable.AddColumn("CplScore");
+            detailTable.AddColumn("CplNorm");
             detailTable.AddColumn("RegFile");
+            detailTable.AddColumn("Risk");
+            detailTable.AddColumn("Priority");
 
             foreach (var r in topReports)
             {
@@ -205,9 +154,11 @@ public class ReportRenderer
                     r.StaticCalls.ToString(),
                     r.AsyncSeamCalls.ToString(),
                     r.ConcreteCasts.ToString(),
-                    $"{r.RawDependencyScore:F2}",
-                    $"{r.DependencyNorm:F4}",
-                    r.IsRegistrationFile ? "Yes" : "");
+                    $"{r.RawCouplingScore:F2}",
+                    $"{r.CouplingNorm:F4}",
+                    r.IsRegistrationFile ? "Yes" : "",
+                    $"{r.RiskScore:F2}",
+                    $"{r.StartingPriority:F2}");
             }
 
             AnsiConsole.MarkupLine("[bold]Detailed Scores[/]");
@@ -217,6 +168,114 @@ public class ReportRenderer
         if (outputPath != null)
         {
             ExportResults(reports, outputPath, baseline);
+        }
+    }
+
+    private static Table CreateTable(bool hasBaseline)
+    {
+        var table = new Table();
+        table.Border(TableBorder.Rounded);
+        table.AddColumn("Rank");
+        table.AddColumn("File");
+        table.AddColumn("Commits");
+        table.AddColumn("Coverage");
+        table.AddColumn("Complexity");
+        table.AddColumn("Coupling");
+        table.AddColumn("Risk");
+        table.AddColumn("Priority");
+        if (hasBaseline)
+            table.AddColumn("Delta");
+        return table;
+    }
+
+    private static void AddFileRow(Table table, FileRiskReport r, int rank, bool noColor,
+        bool hasBaseline, Dictionary<string, double>? baseline,
+        Dictionary<string, List<MethodDetail>>? methodDetails, bool explain)
+    {
+        var coverageStr = $"{r.CoverageRate * 100:F0}%";
+        var columnCount = hasBaseline ? 9 : 8;
+
+        // Row color is driven by PriorityLevel
+        var rowStyle = r.PriorityLevel switch
+        {
+            "High" when !noColor => "red",
+            "Medium" when !noColor => "yellow",
+            _ => "default"
+        };
+
+        // Risk column gets independent coloring
+        var riskStyle = r.RiskLevel switch
+        {
+            "High" when !noColor => "red",
+            "Medium" when !noColor => "yellow",
+            _ => rowStyle
+        };
+
+        // Coupling level styled to indicate cost of introducing seams
+        var cplStyle = r.CouplingLevel switch
+        {
+            "Very High" when !noColor => "red",
+            "High" when !noColor => "yellow",
+            _ => rowStyle
+        };
+
+        var columns = new List<Markup>
+        {
+            new($"[{rowStyle}]{rank}[/]"),
+            new($"[{rowStyle}]{r.File.EscapeMarkup()}[/]"),
+            new($"[{rowStyle}]{r.Commits}[/]"),
+            new($"[{rowStyle}]{coverageStr}[/]"),
+            new($"[{rowStyle}]{r.CyclomaticComplexity}[/]"),
+            new($"[{cplStyle}]{r.CouplingLevel}[/]"),
+            new($"[{riskStyle}]{r.RiskLevel}[/]"),
+            new($"[{rowStyle}]{r.PriorityLevel}[/]")
+        };
+
+        if (hasBaseline)
+        {
+            var deltaMarkup = FormatDelta(r.File, r.StartingPriority, baseline!, noColor);
+            columns.Add(deltaMarkup);
+        }
+
+        table.AddRow(columns);
+
+        // Method-level detail rows (--detailed)
+        if (methodDetails != null && methodDetails.TryGetValue(r.File, out var methods))
+        {
+            foreach (var method in methods)
+            {
+                var methodCoverage = method.CoverageRate.HasValue
+                    ? $"{method.CoverageRate.Value * 100:F0}%"
+                    : "\u2014";
+
+                var methodColumns = new List<Markup>
+                {
+                    new(""),
+                    new($"[dim]  {method.Name.EscapeMarkup()}[/]"),
+                    new($"[dim]\u2014[/]"),
+                    new($"[dim]{methodCoverage}[/]"),
+                    new($"[dim]{method.Complexity}[/]"),
+                    new(""),
+                    new(""),
+                    new("")
+                };
+
+                if (hasBaseline)
+                    methodColumns.Add(new Markup(""));
+
+                table.AddRow(methodColumns);
+            }
+        }
+
+        // Explanation row (--explain)
+        if (explain)
+        {
+            var explanation = BuildExplanation(r);
+            var explainColumns = new List<Markup> { new("") };
+            // Span explanation across remaining columns
+            for (var c = 1; c < columnCount; c++)
+                explainColumns.Add(c == 1 ? new Markup($"[dim italic]  {explanation.EscapeMarkup()}[/]") : new Markup(""));
+            table.AddRow(explainColumns);
         }
     }
 
@@ -240,6 +299,67 @@ public class ReportRenderer
         // Negative delta = priority went down = file improved = green
         var style = delta > 0 ? "red" : "green";
         return new Markup($"[{style}]{deltaStr}[/]");
+    }
+
+    internal static string BuildExplanation(FileRiskReport r)
+    {
+        var drivers = new List<string>();
+
+        // Churn signal
+        if (r.ChurnNorm >= 0.5) drivers.Add("high churn");
+        else if (r.ChurnNorm >= 0.2) drivers.Add("moderate churn");
+
+        // Coverage signal
+        if (r.CoverageRate == 0.0 && !r.IsRegistrationFile)
+            drivers.Add("no test coverage");
+        else if (r.CoverageRate < 0.3) drivers.Add("low coverage");
+        else if (r.CoverageRate < 0.6) drivers.Add("moderate coverage");
+
+        // Complexity signal with breakdown
+        string? complexityStr = null;
+        if (r.ComplexityNorm >= 0.5) complexityStr = "high complexity";
+        else if (r.ComplexityNorm >= 0.2) complexityStr = "moderate complexity";
+
+        if (complexityStr != null)
+        {
+            var breakdownParts = FormatComplexityBreakdown(r.ComplexityBreakdown);
+            if (breakdownParts != null)
+                complexityStr += $" ({breakdownParts})";
+            drivers.Add(complexityStr);
+        }
+
+        var result = string.Join(" + ", drivers);
+
+        // Coupling context
+        if (r.CouplingLevel is "High" or "Very High")
+        {
+            var levelRank = r.PriorityLevel switch { "High" => 2, "Medium" => 1, _ => 0 };
+            var riskRank = r.RiskLevel switch { "High" => 2, "Medium" => 1, _ => 0 };
+            if (levelRank < riskRank)
+                result += $"; {r.CouplingLevel.ToLowerInvariant()} coupling — introduce seams before testing";
+            else
+                result += $"; {r.CouplingLevel.ToLowerInvariant()} coupling reduces priority";
+        }
+
+        return result.Length > 0 ? result : "low risk across all signals";
+    }
+
+    private static string? FormatComplexityBreakdown(ComplexityBreakdown? breakdown)
+    {
+        if (breakdown == null) return null;
+
+        var parts = new List<(string label, int count)>();
+        if (breakdown.Conditionals > 0) parts.Add(("conditionals", breakdown.Conditionals));
+        if (breakdown.Loops > 0) parts.Add(("loops", breakdown.Loops));
+        if (breakdown.LogicalOps > 0) parts.Add(("logical ops", breakdown.LogicalOps));
+        if (breakdown.Switches > 0) parts.Add(("switch cases", breakdown.Switches));
+        if (breakdown.Catches > 0) parts.Add(("catches", breakdown.Catches));
+
+        if (parts.Count == 0) return null;
+
+        // Show top 3 by count
+        var top = parts.OrderByDescending(p => p.count).Take(3);
+        return string.Join(", ", top.Select(p => $"{p.count} {p.label}"));
     }
 
     internal static (int Improved, int Degraded, int New, int Removed) ComputeBaselineStats(
@@ -312,9 +432,9 @@ public class ReportRenderer
                 asyncSeamCalls = r.AsyncSeamCalls,
                 concreteCasts = r.ConcreteCasts,
                 isRegistrationFile = r.IsRegistrationFile,
-                rawDependencyScore = r.RawDependencyScore,
-                dependencyNorm = r.DependencyNorm,
-                dependencyLevel = r.DependencyLevel,
+                rawCouplingScore = r.RawCouplingScore,
+                couplingNorm = r.CouplingNorm,
+                couplingLevel = r.CouplingLevel,
                 startingPriority = r.StartingPriority,
                 priorityLevel = r.PriorityLevel,
                 delta
@@ -335,7 +455,7 @@ public class ReportRenderer
         var header = "file,commits,weightedChurn,coverageRate,cyclomaticComplexity,riskScore,riskLevel," +
                      "infrastructureCalls,directInstantiations,concreteConstructorParams,staticCalls," +
                      "asyncSeamCalls,concreteCasts,isRegistrationFile," +
-                     "rawDependencyScore,dependencyNorm,dependencyLevel,startingPriority,priorityLevel";
+                     "rawCouplingScore,couplingNorm,couplingLevel,startingPriority,priorityLevel";
         if (baseline != null)
             header += ",delta";
         sb.AppendLine(header);
@@ -359,9 +479,9 @@ public class ReportRenderer
                 r.AsyncSeamCalls,
                 r.ConcreteCasts,
                 r.IsRegistrationFile.ToString().ToLowerInvariant(),
-                r.RawDependencyScore,
-                r.DependencyNorm,
-                EscapeCsvField(r.DependencyLevel),
+                r.RawCouplingScore,
+                r.CouplingNorm,
+                EscapeCsvField(r.CouplingLevel),
                 r.StartingPriority,
                 EscapeCsvField(r.PriorityLevel));
 
@@ -419,10 +539,9 @@ public class ReportRenderer
         var columns = new List<(string header, bool numeric)>
         {
             ("#", true), ("File", false), ("Commits", true), ("Coverage", true),
-            ("Complexity", true), ("Dependency", false), ("Risk", true), ("Priority", true)
+            ("Complexity", true), ("Coupling", false), ("Risk", false), ("Priority", false)
         };
         if (hasBaseline) columns.Add(("Delta", true));
-        columns.Add(("Level", false));
 
         foreach (var (header, _) in columns)
             sb.AppendLine($"  <th onclick=\"sortTable(this)\">{HtmlEncode(header)}<span class=\"arrow\"></span></th>");
@@ -434,7 +553,7 @@ public class ReportRenderer
             var r = reports[i];
             var priorityCss = r.PriorityLevel.ToLowerInvariant();
             var riskCss = r.RiskLevel.ToLowerInvariant();
-            var depCss = r.DependencyLevel switch
+            var depCss = r.CouplingLevel switch
             {
                 "Very High" => "high",
                 "High" => "medium",
@@ -447,9 +566,9 @@ public class ReportRenderer
             sb.AppendLine($"  <td class=\"num\">{r.Commits}</td>");
             sb.AppendLine($"  <td class=\"num\">{r.CoverageRate * 100:F0}%</td>");
             sb.AppendLine($"  <td class=\"num\">{r.CyclomaticComplexity}</td>");
-            sb.AppendLine($"  <td class=\"{depCss}\">{HtmlEncode(r.DependencyLevel)}</td>");
-            sb.AppendLine($"  <td class=\"num {riskCss}\">{r.RiskScore:F2}</td>");
-            sb.AppendLine($"  <td class=\"num {priorityCss}\">{r.StartingPriority:F2}</td>");
+            sb.AppendLine($"  <td class=\"{depCss}\">{HtmlEncode(r.CouplingLevel)}</td>");
+            sb.AppendLine($"  <td class=\"{riskCss}\">{HtmlEncode(r.RiskLevel)}</td>");
+            sb.AppendLine($"  <td class=\"{priorityCss}\">{HtmlEncode(r.PriorityLevel)}</td>");
 
             if (hasBaseline)
             {
@@ -471,7 +590,6 @@ public class ReportRenderer
                 }
             }
 
-            sb.AppendLine($"  <td class=\"{priorityCss}\">{HtmlEncode(r.PriorityLevel)}</td>");
             sb.AppendLine("</tr>");
         }
 
