@@ -1,108 +1,99 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="880" height="410" viewBox="0 0 880 410">
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="330" viewBox="0 0 900 330">
   <defs>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&amp;display=swap');
-      text { font-family: 'Fira Code', 'Cascadia Code', 'SF Mono', 'Consolas', monospace; }
+      text { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; }
     </style>
   </defs>
 
-  <!-- Terminal window -->
-  <rect fill="#282a36" width="880" height="410" rx="10"/>
+  <!-- Border -->
+  <rect fill="#30363d" width="900" height="330" rx="8"/>
+  <!-- Background -->
+  <rect fill="#0d1117" x="1" y="1" width="898" height="328" rx="7"/>
 
   <!-- Title bar -->
-  <rect fill="#21222c" width="880" height="38" rx="10"/>
-  <rect fill="#21222c" y="22" width="880" height="16"/>
-  <circle fill="#ff5f56" cx="22" cy="19" r="7"/>
-  <circle fill="#ffbd2e" cx="44" cy="19" r="7"/>
-  <circle fill="#27c93f" cx="66" cy="19" r="7"/>
-  <text fill="#6272a4" font-size="12" x="410" y="24" text-anchor="middle">dotnet-litmus</text>
+  <rect fill="#010409" x="1" y="1" width="898" height="33" rx="7"/>
+  <rect fill="#010409" x="1" y="20" width="898" height="14"/>
+  <circle fill="#ff5f56" cx="20" cy="17" r="6"/>
+  <circle fill="#ffbd2e" cx="38" cy="17" r="6"/>
+  <circle fill="#27c93f" cx="56" cy="17" r="6"/>
+  <text fill="#7d8590" font-size="11.5" x="450" y="22" text-anchor="middle">dotnet-litmus</text>
 
-  <!-- Prompt -->
-  <text fill="#50fa7b" font-size="14" x="22" y="68">$</text>
-  <text fill="#f8f8f2" font-size="14" x="40" y="68">dotnet-litmus scan --top 4</text>
+  <!-- Command -->
+  <text fill="#3fb950" font-size="13" x="22" y="56">$</text>
+  <text fill="#e6edf3" font-size="13" x="36" y="56">dotnet-litmus scan --top 4</text>
 
-  <!-- Status -->
-  <text fill="#f8f8f2" font-size="13" font-weight="600" x="22" y="94">Analyzing solution...</text>
-
-  <!-- Table header background -->
-  <rect fill="#343746" x="18" y="106" width="844" height="24" rx="4"/>
+  <!-- ── Act Now ── -->
+  <text fill="#58a6ff" font-size="12" font-weight="600" x="22" y="82">── Act Now</text>
+  <line x1="114" y1="78" x2="878" y2="78" stroke="#21262d" stroke-width="1"/>
 
   <!-- Column headers -->
-  <text fill="#bd93f9" font-size="12" font-weight="600" x="28" y="123">Rank</text>
-  <text fill="#bd93f9" font-size="12" font-weight="600" x="80" y="123">File</text>
-  <text fill="#bd93f9" font-size="12" font-weight="600" x="330" y="123">Commits</text>
-  <text fill="#bd93f9" font-size="12" font-weight="600" x="418" y="123">Cover.</text>
-  <text fill="#bd93f9" font-size="12" font-weight="600" x="490" y="123">Compl.</text>
-  <text fill="#bd93f9" font-size="12" font-weight="600" x="558" y="123">Dependency</text>
-  <text fill="#bd93f9" font-size="12" font-weight="600" x="660" y="123">Risk</text>
-  <text fill="#bd93f9" font-size="12" font-weight="600" x="716" y="123">Priority</text>
-  <text fill="#bd93f9" font-size="12" font-weight="600" x="780" y="123">Level</text>
+  <text fill="#7d8590" font-size="11" x="22" y="102">Rank</text>
+  <text fill="#7d8590" font-size="11" x="66" y="102">File</text>
+  <text fill="#7d8590" font-size="11" x="330" y="102">Commits</text>
+  <text fill="#7d8590" font-size="11" x="406" y="102">Coverage</text>
+  <text fill="#7d8590" font-size="11" x="488" y="102">Complexity</text>
+  <text fill="#7d8590" font-size="11" x="586" y="102">Coupling</text>
+  <text fill="#7d8590" font-size="11" x="672" y="102">Risk</text>
+  <text fill="#7d8590" font-size="11" x="740" y="102">Priority</text>
+
+  <!-- Row 1: High Priority -->
+  <rect fill="#ff7b7208" x="14" y="108" width="872" height="20" rx="2"/>
+  <text fill="#ff7b72" font-size="12" x="28" y="122">1</text>
+  <text fill="#ff7b72" font-size="12" x="66" y="122">Services/OrderService.cs</text>
+  <text fill="#ff7b72" font-size="12" x="348" y="122">47</text>
+  <text fill="#ff7b72" font-size="12" x="424" y="122">12%</text>
+  <text fill="#ff7b72" font-size="12" x="512" y="122">94</text>
+  <text fill="#ff7b72" font-size="12" x="586" y="122">Low</text>
+  <text fill="#ff7b72" font-size="12" font-weight="600" x="672" y="122">High</text>
+  <text fill="#ff7b72" font-size="12" font-weight="600" x="740" y="122">High</text>
+
+  <!-- Row 2: High Priority -->
+  <rect fill="#ff7b7208" x="14" y="130" width="872" height="20" rx="2"/>
+  <text fill="#ff7b72" font-size="12" x="28" y="144">2</text>
+  <text fill="#ff7b72" font-size="12" x="66" y="144">Services/ReportFormatter.cs</text>
+  <text fill="#ff7b72" font-size="12" x="348" y="144">22</text>
+  <text fill="#ff7b72" font-size="12" x="424" y="144">31%</text>
+  <text fill="#ff7b72" font-size="12" x="512" y="144">67</text>
+  <text fill="#ff7b72" font-size="12" x="586" y="144">Low</text>
+  <text fill="#ff7b72" font-size="12" font-weight="600" x="672" y="144">High</text>
+  <text fill="#ff7b72" font-size="12" font-weight="600" x="740" y="144">High</text>
+
+  <!-- ── Next Sprint ── -->
+  <text fill="#58a6ff" font-size="12" font-weight="600" x="22" y="168">── Next Sprint</text>
+  <line x1="142" y1="164" x2="878" y2="164" stroke="#21262d" stroke-width="1"/>
+
+  <!-- Row 3: Medium Priority, Risk/Coupling independently red -->
+  <text fill="#d29922" font-size="12" x="28" y="188">3</text>
+  <text fill="#d29922" font-size="12" x="66" y="188">Controllers/PaymentGateway.cs</text>
+  <text fill="#d29922" font-size="12" x="348" y="188">31</text>
+  <text fill="#d29922" font-size="12" x="424" y="188">8%</text>
+  <text fill="#d29922" font-size="12" x="512" y="188">118</text>
+  <text fill="#ff7b72" font-size="12" x="586" y="188">Very High</text>
+  <text fill="#ff7b72" font-size="12" font-weight="600" x="672" y="188">High</text>
+  <text fill="#d29922" font-size="12" font-weight="600" x="740" y="188">Medium</text>
+
+  <!-- ── Monitor ── -->
+  <text fill="#58a6ff" font-size="12" font-weight="600" x="22" y="214">── Monitor</text>
+  <line x1="108" y1="210" x2="878" y2="210" stroke="#21262d" stroke-width="1"/>
+
+  <!-- Row 4: Low Priority, Risk independently red -->
+  <text fill="#484f58" font-size="12" x="28" y="234">4</text>
+  <text fill="#484f58" font-size="12" x="66" y="234">Data/LegacyDbSync.cs</text>
+  <text fill="#484f58" font-size="12" x="348" y="234">41</text>
+  <text fill="#484f58" font-size="12" x="424" y="234">0%</text>
+  <text fill="#484f58" font-size="12" x="512" y="234">201</text>
+  <text fill="#ff7b72" font-size="12" x="586" y="234">Very High</text>
+  <text fill="#ff7b72" font-size="12" font-weight="600" x="672" y="234">High</text>
+  <text fill="#484f58" font-size="12" x="740" y="234">Low</text>
 
   <!-- Separator -->
-  <line x1="18" y1="134" x2="860" y2="134" stroke="#44475a" stroke-width="1"/>
-
-  <!-- Row 1: HIGH — red row background hint -->
-  <rect fill="#ff555510" x="18" y="138" width="844" height="28" rx="2"/>
-  <text fill="#ff5555" font-size="13" x="36" y="157">1</text>
-  <text fill="#ff5555" font-size="13" x="80" y="157">Services/OrderService.cs</text>
-  <text fill="#ff5555" font-size="13" x="352" y="157">47</text>
-  <text fill="#ff5555" font-size="13" x="428" y="157">12%</text>
-  <text fill="#ff5555" font-size="13" x="504" y="157">94</text>
-  <text fill="#ff5555" font-size="13" x="572" y="157">Low</text>
-  <text fill="#ff5555" font-size="13" font-weight="600" x="665" y="157">1.42</text>
-  <text fill="#ff5555" font-size="13" font-weight="600" x="728" y="157">1.42</text>
-  <text fill="#ff5555" font-size="13" font-weight="600" x="780" y="157">High</text>
-
-  <!-- Row 2: HIGH -->
-  <rect fill="#ff555510" x="18" y="170" width="844" height="28" rx="2"/>
-  <text fill="#ff5555" font-size="13" x="36" y="189">2</text>
-  <text fill="#ff5555" font-size="13" x="80" y="189">Services/ReportFormatter.cs</text>
-  <text fill="#ff5555" font-size="13" x="352" y="189">22</text>
-  <text fill="#ff5555" font-size="13" x="428" y="189">31%</text>
-  <text fill="#ff5555" font-size="13" x="504" y="189">67</text>
-  <text fill="#ff5555" font-size="13" x="572" y="189">Low</text>
-  <text fill="#ff5555" font-size="13" font-weight="600" x="665" y="189">0.71</text>
-  <text fill="#ff5555" font-size="13" font-weight="600" x="728" y="189">0.71</text>
-  <text fill="#ff5555" font-size="13" font-weight="600" x="780" y="189">High</text>
-
-  <!-- Row 3: MEDIUM — yellow, but risk column red -->
-  <rect fill="#f1fa8c08" x="18" y="202" width="844" height="28" rx="2"/>
-  <text fill="#f1fa8c" font-size="13" x="36" y="221">3</text>
-  <text fill="#f1fa8c" font-size="13" x="80" y="221">Controllers/PaymentGateway.cs</text>
-  <text fill="#f1fa8c" font-size="13" x="352" y="221">31</text>
-  <text fill="#f1fa8c" font-size="13" x="428" y="221">8%</text>
-  <text fill="#f1fa8c" font-size="13" x="504" y="221">118</text>
-  <text fill="#ff5555" font-size="13" font-weight="600" x="572" y="221">Very High</text>
-  <text fill="#ff5555" font-size="13" font-weight="600" x="665" y="221">1.61</text>
-  <text fill="#f1fa8c" font-size="13" x="728" y="221">0.32</text>
-  <text fill="#f1fa8c" font-size="13" x="780" y="221">Med</text>
-
-  <!-- Row 4: LOW — dim, but risk column red -->
-  <text fill="#6272a4" font-size="13" x="36" y="253">4</text>
-  <text fill="#6272a4" font-size="13" x="80" y="253">Data/LegacyDbSync.cs</text>
-  <text fill="#6272a4" font-size="13" x="352" y="253">41</text>
-  <text fill="#6272a4" font-size="13" x="428" y="253">0%</text>
-  <text fill="#6272a4" font-size="13" x="504" y="253">201</text>
-  <text fill="#ff5555" font-size="13" font-weight="600" x="572" y="253">Very High</text>
-  <text fill="#ff5555" font-size="13" font-weight="600" x="665" y="253">1.89</text>
-  <text fill="#6272a4" font-size="13" x="728" y="253">0.19</text>
-  <text fill="#6272a4" font-size="13" x="780" y="253">Low</text>
-
-  <!-- Separator -->
-  <line x1="18" y1="134" x2="860" y2="134" stroke="#44475a" stroke-width="1"/>
+  <line x1="22" y1="252" x2="878" y2="252" stroke="#21262d" stroke-width="1"/>
 
   <!-- Summary -->
-  <text fill="#f8f8f2" font-size="12" x="22" y="290">4 files analyzed. 2 high-priority (start today), 1 medium-priority (next sprint).</text>
-  <text fill="#f8f8f2" font-size="12" x="22" y="308">2 high-risk file(s) need seam introduction before testing.</text>
+  <text fill="#8b949e" font-size="11.5" x="22" y="272">4 files analyzed. 2 high-priority (start today), 1 medium-priority (next sprint).</text>
+  <text fill="#8b949e" font-size="11.5" x="22" y="290">2 high-risk file(s) need seam introduction before testing.</text>
 
-  <!-- Insight annotations -->
-  <line x1="80" y1="330" x2="80" y2="390" stroke="#44475a" stroke-width="1" stroke-dasharray="3,3"/>
-
-  <!-- Annotation: start here -->
-  <rect fill="#ff555520" x="90" y="326" width="340" height="24" rx="12"/>
-  <text fill="#ff5555" font-size="11" x="104" y="342">OrderService.cs &#8594; risky + testable = start here</text>
-
-  <!-- Annotation: seams first -->
-  <rect fill="#f1fa8c18" x="90" y="362" width="410" height="24" rx="12"/>
-  <text fill="#f1fa8c" font-size="11" x="104" y="378">PaymentGateway.cs &#8594; riskier, but introduce seams first</text>
+  <!-- Subtle legend -->
+  <text fill="#484f58" font-size="10" x="22" y="316">Risk = churn × coverage gaps × complexity</text>
+  <text fill="#484f58" font-size="10" x="340" y="316">Priority = risk adjusted for coupling</text>
 </svg>

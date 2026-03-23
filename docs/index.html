@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Litmus &mdash; Find Your Riskiest Untested Code</title>
-  <meta name="description" content="A .NET CLI tool that identifies high-risk source files by cross-referencing git churn, code coverage, cyclomatic complexity, and dependency analysis to show you exactly where to add tests first.">
+  <meta name="description" content="A .NET CLI tool that identifies high-risk source files by cross-referencing git churn, code coverage, cyclomatic complexity, and coupling analysis to show you exactly where to add tests first.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -159,6 +159,88 @@
       width: 16px;
       height: 16px;
       fill: currentColor;
+    }
+
+    /* --- Hamburger button --- */
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.4rem;
+      z-index: 200;
+    }
+
+    .hamburger svg {
+      width: 24px;
+      height: 24px;
+      stroke: var(--color-text);
+      stroke-width: 2;
+      stroke-linecap: round;
+    }
+
+    .hamburger .icon-close { display: none; }
+    .hamburger.active .icon-menu { display: none; }
+    .hamburger.active .icon-close { display: block; }
+
+    /* --- Mobile nav overlay --- */
+    .nav-overlay {
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      .hamburger {
+        display: block;
+      }
+
+      .header-nav {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: min(300px, 80vw);
+        height: 100dvh;
+        background: var(--color-surface);
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0;
+        padding: 4.5rem 1.5rem 2rem;
+        box-shadow: -4px 0 24px rgba(0,0,0,0.1);
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        z-index: 150;
+        overflow-y: auto;
+      }
+
+      .header-nav.open {
+        transform: translateX(0);
+      }
+
+      .header-nav a {
+        font-size: 1.05rem;
+        padding: 0.75rem 0;
+        width: 100%;
+        border-bottom: 1px solid var(--color-border);
+      }
+
+      .header-nav .gh-btn {
+        margin-top: 0.75rem;
+        width: 100%;
+        justify-content: center;
+        padding: 0.65rem 1rem;
+        font-size: 0.9rem;
+      }
+
+      .nav-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.3);
+        z-index: 140;
+      }
+
+      .nav-overlay.visible {
+        display: block;
+      }
     }
 
     /* --- Hero --- */
@@ -801,10 +883,6 @@
         padding: 0.8rem 1rem;
       }
 
-      .header-nav {
-        gap: 0.75rem;
-      }
-
       .step {
         flex-direction: column;
         gap: 0.75rem;
@@ -822,7 +900,11 @@
   <header class="header">
     <div class="header-inner">
       <a href="#" class="header-logo"><span>Litmus</span></a>
-      <nav class="header-nav">
+      <button class="hamburger" id="hamburger-btn" aria-label="Toggle navigation">
+        <svg class="icon-menu" viewBox="0 0 24 24" fill="none"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <svg class="icon-close" viewBox="0 0 24 24" fill="none"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
+      </button>
+      <nav class="header-nav" id="header-nav">
         <a href="#the-problem">Why</a>
         <a href="#phase-1">Risk</a>
         <a href="#phase-2">Priority</a>
@@ -834,6 +916,7 @@
           GitHub
         </a>
       </nav>
+      <div class="nav-overlay" id="nav-overlay"></div>
     </div>
   </header>
 
@@ -841,7 +924,7 @@
   <section class="hero">
     <div class="hero-eyebrow">.NET 8+ &middot; CLI Tool &middot; MIT License</div>
     <h1>Know exactly where to<br><span class="accent">add tests first</span></h1>
-    <p class="lead">Litmus cross-references git churn, code coverage, cyclomatic complexity, and dependency analysis to produce a single ranked list of files &mdash; ordered by how urgently they need tests and how practical they are to test <em>today</em>.</p>
+    <p class="lead">Litmus cross-references git churn, code coverage, cyclomatic complexity, and coupling analysis to produce a single ranked list of files &mdash; ordered by how urgently they need tests and how practical they are to test <em>today</em>.</p>
 
     <div class="hero-actions">
       <div class="install-box">
@@ -1049,7 +1132,7 @@
         <p>Phase 2 quantifies this cost using Michael Feathers&rsquo; concept of <strong>seams</strong> (from <em>Working Effectively with Legacy Code</em>) &mdash; points in the code where a dependency can be substituted in a test without modifying production code. It measures how many <strong>unseamed dependencies</strong> a file has.</p>
       </div>
 
-      <h3 style="font-size:1.25rem; font-weight:700; margin-bottom:1.5rem;">The Six Dependency Signals</h3>
+      <h3 style="font-size:1.25rem; font-weight:700; margin-bottom:1.5rem;">The Six Coupling Signals</h3>
 
       <div class="signals-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
         <div class="signal-card">
@@ -1086,14 +1169,14 @@
 
       <div class="formulas-row">
         <div class="formula-box">
-          <p class="label">Dependency Score</p>
-          <code style="font-size:0.88rem;">DependencyNorm = RawScore / Max(RawScore)</code>
+          <p class="label">Coupling Score</p>
+          <code style="font-size:0.88rem;">CouplingNorm = RawScore / Max(RawScore)</code>
           <p class="desc">Each signal count is multiplied by its weight and summed. The result is normalized across all files in the solution.</p>
         </div>
         <div class="formula-box">
           <p class="label">Starting Priority</p>
-          <code style="font-size:0.88rem;">StartingPriority = RiskScore &times; (1 &minus; DependencyNorm)</code>
-          <p class="desc">Discounts priority as entanglement increases. A fully seamed file keeps its full RiskScore. A maximally entangled file drops to zero.</p>
+          <code style="font-size:0.88rem;">StartingPriority = RiskScore &times; (1 &minus; CouplingNorm)</code>
+          <p class="desc">Discounts priority as coupling increases. A fully seamed file keeps its full RiskScore. A maximally entangled file drops to zero.</p>
         </div>
       </div>
 
@@ -1126,23 +1209,31 @@
 <span class="info">&#9656; Discovered 3 coverage files, merging...</span>
 <span class="info">&#9656; Analyzing 847 commits since 2025-03-01...</span>
 <span class="info">&#9656; Computing complexity for 42 source files...</span>
-<span class="info">&#9656; Evaluating dependency seams...</span>
+<span class="info">&#9656; Evaluating coupling seams...</span>
 
-<span class="dim">Rank &#9474; File                     &#9474; Commits &#9474; Coverage &#9474; Complexity &#9474; Dependency &#9474; Risk   &#9474; Priority &#9474; Level</span>
-<span class="dim">&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</span>
- 1   <span class="dim">&#9474;</span> OrderService.cs          <span class="dim">&#9474;</span> 847     <span class="dim">&#9474;</span> 12%      <span class="dim">&#9474;</span> 94         <span class="dim">&#9474;</span> <span class="low">Low</span>        <span class="dim">&#9474;</span> 1.42   <span class="dim">&#9474;</span> 1.42     <span class="dim">&#9474;</span> <span class="high">High</span>
- 2   <span class="dim">&#9474;</span> ReportFormatter.cs       <span class="dim">&#9474;</span> 290     <span class="dim">&#9474;</span> 31%      <span class="dim">&#9474;</span> 67         <span class="dim">&#9474;</span> <span class="low">Low</span>        <span class="dim">&#9474;</span> 0.71   <span class="dim">&#9474;</span> 0.71     <span class="dim">&#9474;</span> <span class="high">High</span>
- 3   <span class="dim">&#9474;</span> PaymentGateway.cs        <span class="dim">&#9474;</span> 612     <span class="dim">&#9474;</span> 8%       <span class="dim">&#9474;</span> 118        <span class="dim">&#9474;</span> <span class="high">Very High</span>  <span class="dim">&#9474;</span> 1.61   <span class="dim">&#9474;</span> 0.32     <span class="dim">&#9474;</span> <span class="medium">Medium</span>
- 4   <span class="dim">&#9474;</span> LegacyDbSync.cs          <span class="dim">&#9474;</span> 503     <span class="dim">&#9474;</span> 0%       <span class="dim">&#9474;</span> 201        <span class="dim">&#9474;</span> <span class="high">Very High</span>  <span class="dim">&#9474;</span> 1.89   <span class="dim">&#9474;</span> 0.19     <span class="dim">&#9474;</span> <span class="low">Low</span>
+<span class="dim">&#9472;&#9472; Act Now &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</span>
+<span class="dim">Rank &#9474; File                     &#9474; Commits &#9474; Coverage &#9474; Complexity &#9474; Coupling   &#9474; Risk   &#9474; Priority</span>
+<span class="dim">&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</span>
+ 1   <span class="dim">&#9474;</span> OrderService.cs          <span class="dim">&#9474;</span> 847     <span class="dim">&#9474;</span> 12%      <span class="dim">&#9474;</span> 94         <span class="dim">&#9474;</span> <span class="low">Low</span>        <span class="dim">&#9474;</span> <span class="high">High</span>   <span class="dim">&#9474;</span> <span class="high">High</span>
+ 2   <span class="dim">&#9474;</span> ReportFormatter.cs       <span class="dim">&#9474;</span> 290     <span class="dim">&#9474;</span> 31%      <span class="dim">&#9474;</span> 67         <span class="dim">&#9474;</span> <span class="low">Low</span>        <span class="dim">&#9474;</span> <span class="high">High</span>   <span class="dim">&#9474;</span> <span class="high">High</span>
 
-42 files analyzed. <span class="high">2 high-priority</span>, <span class="medium">1 medium-priority</span>, 1 low-priority.
+<span class="dim">&#9472;&#9472; Next Sprint &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</span>
+ 3   <span class="dim">&#9474;</span> PaymentGateway.cs        <span class="dim">&#9474;</span> 612     <span class="dim">&#9474;</span> 8%       <span class="dim">&#9474;</span> 118        <span class="dim">&#9474;</span> <span class="high">Very High</span>  <span class="dim">&#9474;</span> <span class="high">High</span>   <span class="dim">&#9474;</span> <span class="medium">Medium</span>
 
-<span class="comment">&#9656; PaymentGateway.cs: High risk (1.61) but Very High dependency &mdash; introduce seams first.</span>
-<span class="comment">&#9656; LegacyDbSync.cs: Highest risk (1.89) but maximally entangled &mdash; backlog until refactored.</span></pre>
+<span class="dim">&#9472;&#9472; Monitor &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</span>
+ 4   <span class="dim">&#9474;</span> LegacyDbSync.cs          <span class="dim">&#9474;</span> 503     <span class="dim">&#9474;</span> 0%       <span class="dim">&#9474;</span> 201        <span class="dim">&#9474;</span> <span class="high">Very High</span>  <span class="dim">&#9474;</span> <span class="high">High</span>   <span class="dim">&#9474;</span> <span class="low">Low</span>
+
+42 files analyzed. <span class="high">2 high-priority</span> (start today), <span class="medium">1 medium-priority</span> (next sprint).
+2 high-risk file(s) need seam introduction before testing.
+
+<span class="comment">Complexity: sum of conditionals, loops, catches, switch cases, logical ops per file</span>
+<span class="comment">Risk:       churn &times; coverage gaps &times; complexity &mdash; Low | Medium | High</span>
+<span class="comment">Priority:   risk adjusted for coupling &mdash; Low | Medium | High</span>
+<span class="comment">Coupling:   how tightly bound to concrete dependencies &mdash; Low | Medium | High | Very High</span></pre>
       </div>
 
       <div class="prose" style="margin-top:2rem;">
-        <p><code style="font-size:0.9rem; background:var(--color-accent-light); padding:0.1rem 0.4rem; border-radius:4px; color:var(--color-accent);">PaymentGateway.cs</code> and <code style="font-size:0.9rem; background:var(--color-accent-light); padding:0.1rem 0.4rem; border-radius:4px; color:var(--color-accent);">LegacyDbSync.cs</code> are the most <em>dangerous</em> files in this table. But their high dependency scores push them down the starting priority list &mdash; because before you can write a single test, you need to introduce seams. <code style="font-size:0.9rem; background:var(--color-accent-light); padding:0.1rem 0.4rem; border-radius:4px; color:var(--color-accent);">OrderService.cs</code> and <code style="font-size:0.9rem; background:var(--color-accent-light); padding:0.1rem 0.4rem; border-radius:4px; color:var(--color-accent);">ReportFormatter.cs</code> are where the team should begin.</p>
+        <p><code style="font-size:0.9rem; background:var(--color-accent-light); padding:0.1rem 0.4rem; border-radius:4px; color:var(--color-accent);">PaymentGateway.cs</code> and <code style="font-size:0.9rem; background:var(--color-accent-light); padding:0.1rem 0.4rem; border-radius:4px; color:var(--color-accent);">LegacyDbSync.cs</code> are the most <em>dangerous</em> files in this table. But their high coupling scores push them down the starting priority list &mdash; because before you can write a single test, you need to introduce seams. <code style="font-size:0.9rem; background:var(--color-accent-light); padding:0.1rem 0.4rem; border-radius:4px; color:var(--color-accent);">OrderService.cs</code> and <code style="font-size:0.9rem; background:var(--color-accent-light); padding:0.1rem 0.4rem; border-radius:4px; color:var(--color-accent);">ReportFormatter.cs</code> are where the team should begin.</p>
       </div>
     </div>
   </section>
@@ -1301,7 +1392,7 @@
             <tr>
               <td>--verbose</td>
               <td>false</td>
-              <td>Show all intermediate scores per file (churn norm, complexity norm, all 6 dependency signal counts, raw dependency score).</td>
+              <td>Show all intermediate scores per file (churn norm, complexity norm, all 6 coupling signal counts, raw coupling score).</td>
             </tr>
             <tr>
               <td>--quiet</td>
@@ -1317,6 +1408,16 @@
               <td>--detailed</td>
               <td>false</td>
               <td>Expand the top 5 ranked files with per-method coverage and complexity. Console table only.</td>
+            </tr>
+            <tr>
+              <td>--explain</td>
+              <td>false</td>
+              <td>Show plain-English annotations explaining risk/priority drivers per file.</td>
+            </tr>
+            <tr>
+              <td>--no-group</td>
+              <td>false</td>
+              <td>Show flat table instead of grouped by priority level (Act Now / Next Sprint / Monitor).</td>
             </tr>
             <tr>
               <td>--no-color</td>
@@ -1355,11 +1456,14 @@
 <span class="comment"># Later: compare against it</span>
 <span class="prompt">$</span> <span class="cmd">dotnet-litmus scan --baseline baseline.json</span>
 
-<span class="dim">Rank &mid; File                  &mid; &hellip; &mid; Priority &mid; Delta  &mid; Level</span>
-<span class="dim">&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;</span>
- 1   <span class="dim">&mid;</span> OrderService.cs       <span class="dim">&mid;</span> &hellip; <span class="dim">&mid;</span> 1.42     <span class="dim">&mid;</span> <span class="high">+0.15</span>  <span class="dim">&mid;</span> <span class="high">High</span>
- 2   <span class="dim">&mid;</span> ReportFormatter.cs    <span class="dim">&mid;</span> &hellip; <span class="dim">&mid;</span> 0.71     <span class="dim">&mid;</span> <span class="low">-0.10</span>  <span class="dim">&mid;</span> <span class="high">High</span>
- 3   <span class="dim">&mid;</span> NotificationSvc.cs    <span class="dim">&mid;</span> &hellip; <span class="dim">&mid;</span> 0.55     <span class="dim">&mid;</span> <span class="info">NEW</span>    <span class="dim">&mid;</span> <span class="medium">Medium</span>
+<span class="dim">&#9472;&#9472; Act Now &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</span>
+<span class="dim">Rank &mid; File                  &mid; &hellip; &mid; Risk &mid; Priority &mid; Delta</span>
+<span class="dim">&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;&horbar;</span>
+ 1   <span class="dim">&mid;</span> OrderService.cs       <span class="dim">&mid;</span> &hellip; <span class="dim">&mid;</span> <span class="high">High</span> <span class="dim">&mid;</span> <span class="high">High</span>     <span class="dim">&mid;</span> <span class="high">+0.15</span>
+ 2   <span class="dim">&mid;</span> ReportFormatter.cs    <span class="dim">&mid;</span> &hellip; <span class="dim">&mid;</span> <span class="high">High</span> <span class="dim">&mid;</span> <span class="high">High</span>     <span class="dim">&mid;</span> <span class="low">-0.10</span>
+
+<span class="dim">&#9472;&#9472; Next Sprint &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</span>
+ 3   <span class="dim">&mid;</span> NotificationSvc.cs    <span class="dim">&mid;</span> &hellip; <span class="dim">&mid;</span> <span class="high">High</span> <span class="dim">&mid;</span> <span class="medium">Medium</span>   <span class="dim">&mid;</span> <span class="info">NEW</span>
 
 <span class="info">vs baseline: 1 improved, 1 degraded, 1 new, 0 removed.</span></pre>
           </div>
@@ -1440,6 +1544,35 @@
         setTimeout(function() { btn.textContent = 'Copy'; }, 1500);
       });
     }
+
+    // Hamburger menu
+    (function() {
+      var btn = document.getElementById('hamburger-btn');
+      var nav = document.getElementById('header-nav');
+      var overlay = document.getElementById('nav-overlay');
+
+      function toggle() {
+        var open = nav.classList.toggle('open');
+        btn.classList.toggle('active', open);
+        overlay.classList.toggle('visible', open);
+        document.body.style.overflow = open ? 'hidden' : '';
+      }
+
+      function close() {
+        nav.classList.remove('open');
+        btn.classList.remove('active');
+        overlay.classList.remove('visible');
+        document.body.style.overflow = '';
+      }
+
+      btn.addEventListener('click', toggle);
+      overlay.addEventListener('click', close);
+
+      // Close on nav link click
+      nav.querySelectorAll('a').forEach(function(a) {
+        a.addEventListener('click', close);
+      });
+    })();
 
     // Scroll-triggered animations
     (function() {
