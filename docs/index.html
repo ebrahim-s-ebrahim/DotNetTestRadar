@@ -45,6 +45,7 @@
 
     html {
       scroll-behavior: smooth;
+      overflow-x: hidden;
     }
 
     body {
@@ -53,6 +54,7 @@
       color: var(--color-text);
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
 
     /* --- Animations --- */
@@ -206,13 +208,15 @@
         padding: 4.5rem 1.5rem 2rem;
         box-shadow: -4px 0 24px rgba(0,0,0,0.1);
         transform: translateX(100%);
-        transition: transform 0.3s ease;
+        visibility: hidden;
+        transition: transform 0.3s ease, visibility 0.3s;
         z-index: 150;
         overflow-y: auto;
       }
 
       .header-nav.open {
         transform: translateX(0);
+        visibility: visible;
       }
 
       .header-nav a {
