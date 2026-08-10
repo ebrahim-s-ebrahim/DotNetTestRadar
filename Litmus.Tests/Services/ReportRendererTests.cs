@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Litmus.Abstractions;
 using Litmus.Models;
@@ -14,6 +15,7 @@ public class ReportRendererTests
 {
     public ReportRendererTests()
     {
+        Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US");
         AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings
         {
             Out = new AnsiConsoleOutput(TextWriter.Null)
