@@ -379,6 +379,15 @@ public class ReportRendererTests
         html.Should().Contain("+0.50");
     }
 
+    // Guards <InvariantGlobalization> in both csproj files. Without it the "+0.50" assertion above
+    // only fails on a non-US machine, so an en-US CI runner would never catch the regression.
+    [Fact]
+    public void OutputFormatting_IsCultureIndependent()
+    {
+        CultureInfo.CurrentCulture.Should().Be(CultureInfo.InvariantCulture);
+        $"{0.5:F2}".Should().Be("0.50");
+    }
+
     [Fact]
     public void ExportHtml_WithoutBaseline_NoDeltaColumn()
     {
